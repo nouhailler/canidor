@@ -1,0 +1,2219 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{background:#2A211B;}
+  ::-webkit-scrollbar{width:0;height:0;}
+  @keyframes scanline{0%{transform:translateY(0);}100%{transform:translateY(220px);}}
+  @keyframes pulsered{0%,100%{opacity:.35;}50%{opacity:.9;}}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  @keyframes rise{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+  @keyframes sheetup{from{transform:translateY(100%);}to{transform:translateY(0);}}
+  @keyframes wag{0%,100%{transform:rotate(-9deg);}50%{transform:rotate(9deg);}}
+  @keyframes bar{from{width:0;}}
+</style>
+</helmet>
+<div style="width:100%;height:100%;max-width:430px;margin:0 auto;background:#F5EFE4;position:relative;overflow:hidden;display:flex;flex-direction:column;font-family:'Hanken Grotesk',system-ui,sans-serif;color:#2A211B;">
+
+  <!-- STATUS BAR -->
+  <div style="flex:none;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:14px;font-weight:600;background:#F5EFE4;z-index:5;">
+    <span>9:41</span>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span style="font-size:11px;letter-spacing:1px;">●●●●</span>
+      <span style="font-size:12px;">5G</span>
+      <div style="width:24px;height:12px;border:1.5px solid #2A211B;border-radius:3px;padding:1.5px;position:relative;">
+        <div style="width:70%;height:100%;background:#2A211B;border-radius:1px;"></div>
+        <div style="position:absolute;right:-3px;top:3px;width:2px;height:5px;background:#2A211B;border-radius:0 1px 1px 0;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ONBOARDING -->
+  <sc-if value="{{ showOnboarding }}" hint-placeholder-val="{{ true }}">
+    <div style="position:absolute;inset:0;top:44px;background:#2A211B;color:#F5EFE4;display:flex;flex-direction:column;z-index:40;animation:rise .4s ease;">
+      <div style="flex:none;display:flex;align-items:center;gap:9px;padding:26px 34px 0;">
+        <div style="width:28px;height:28px;border-radius:9px;background:#C2603C;display:flex;align-items:center;justify-content:center;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="#FFF7F0" stroke="none"><ellipse cx="7" cy="9.2" rx="1.6" ry="2.2"/><ellipse cx="12" cy="7.4" rx="1.7" ry="2.4"/><ellipse cx="17" cy="9.2" rx="1.6" ry="2.2"/><path d="M12 11.4c-2.4 0-4.3 1.9-4.3 3.9 0 1.7 1.4 2.8 3 2.8.6 0 .9-.2 1.3-.2s.7.2 1.3.2c1.6 0 3-1.1 3-2.8 0-2-1.9-3.9-4.3-3.9z"/></svg>
+        </div>
+        <div style="font-family:'Instrument Serif',serif;font-size:23px;letter-spacing:.01em;">Canidor</div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 34px;">
+        <div style="font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#9B8A74;font-weight:600;margin-bottom:18px;">{{ obKicker }}</div>
+        <div style="font-family:'Instrument Serif',serif;font-size:46px;line-height:1.05;margin-bottom:18px;">{{ obTitle }}</div>
+        <div style="font-size:16px;line-height:1.55;color:#D7C7AF;max-width:300px;">{{ obBody }}</div>
+        <div style="margin-top:40px;display:flex;flex-direction:column;gap:14px;align-items:flex-start;">
+          <sc-for list="{{ obFeatures }}" as="f" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:12px;font-size:15px;color:#EADECA;">
+              <span style="width:7px;height:7px;border-radius:50%;background:#F5EFE4;flex:none;"></span>{{ f }}
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="flex:none;padding:24px 34px 40px;">
+        <div style="display:flex;gap:8px;margin-bottom:24px;">
+          <sc-for list="{{ obDots }}" as="d" hint-placeholder-count="4">
+            <div style="height:3px;flex:1;border-radius:2px;background:{{ d.bg }};"></div>
+          </sc-for>
+        </div>
+        <div onClick="{{ nextOb }}" style="background:#F5EFE4;color:#2A211B;border-radius:999px;padding:17px;text-align:center;font-weight:600;font-size:16px;cursor:pointer;">{{ obCta }}</div>
+        <div onClick="{{ skipOb }}" style="text-align:center;margin-top:16px;color:#9B8A74;font-size:14px;cursor:pointer;">Passer l'introduction</div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- APP BAR -->
+  <sc-if value="{{ showAppBar }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:6px 16px 12px;background:#F5EFE4;z-index:6;">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+        <sc-if value="{{ showBack }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ back }}" style="width:38px;height:38px;border-radius:50%;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;font-size:18px;">‹</div>
+        </sc-if>
+        <div style="min-width:0;">
+          <div style="font-family:'Instrument Serif',serif;font-size:25px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ headerTitle }}</div>
+        </div>
+      </div>
+      <div onClick="{{ openHelp }}" style="width:38px;height:38px;border-radius:50%;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;font-size:14px;font-weight:700;">?</div>
+    </div>
+  </sc-if>
+
+  <!-- SCROLL CONTENT -->
+  <div style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;">
+  <div style="padding-bottom:96px;">
+
+    <!-- ===== HOME ===== -->
+    <sc-if value="{{ scHome }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="display:flex;align-items:center;gap:14px;background:#2A211B;color:#F5EFE4;border-radius:22px;padding:16px;">
+          <div style="width:58px;height:58px;border-radius:16px;flex:none;background:repeating-linear-gradient(45deg,#3A2C20,#3A2C20 7px,#2F2316 7px,#2F2316 14px);display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:26px;color:#9B8A74;">B</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-family:'Instrument Serif',serif;font-size:24px;line-height:1;">Stanley</div>
+            <div style="font-size:13px;color:#A89878;margin-top:4px;">Cocker Spaniel Anglais · 4 ans · ♂</div>
+          </div>
+          <div style="text-align:center;flex:none;">
+            <div style="font-family:'Instrument Serif',serif;font-size:22px;">76</div>
+            <div style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#A89878;">forme</div>
+          </div>
+        </div>
+
+        <div style="margin-top:22px;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:16px;padding:14px 16px;">
+          <div style="width:34px;height:34px;border-radius:10px;background:#F4E8D5;display:flex;align-items:center;justify-content:center;flex:none;font-size:16px;">☀</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;">Activité du jour</div>
+            <div style="font-size:14px;font-weight:500;margin-top:2px;">20 min de pistage olfactif</div>
+          </div>
+          <div onClick="{{ goActivities }}" style="font-size:13px;font-weight:600;color:#2A211B;border-bottom:1.5px solid #2A211B;cursor:pointer;flex:none;">Voir</div>
+        </div>
+
+        <div style="margin-top:26px;display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;">Alertes santé</div>
+          <div onClick="{{ goCarnet }}" style="font-size:12px;color:#897A67;cursor:pointer;">Carnet ›</div>
+        </div>
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px;">
+          <sc-for list="{{ homeAlerts }}" as="a" hint-placeholder-count="2">
+            <div style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:13px 14px;">
+              <div style="width:8px;height:8px;border-radius:50%;background:{{ a.color }};flex:none;"></div>
+              <div style="flex:1;font-size:13.5px;">{{ a.text }}</div>
+              <div style="font-size:12px;color:#A89878;flex:none;">{{ a.when }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="margin-top:26px;display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;">Accès rapide</div>
+          <div onClick="{{ goTools }}" style="font-size:12px;color:#897A67;cursor:pointer;">Tout voir ›</div>
+        </div>
+        <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <sc-for list="{{ homeQuick }}" as="q" hint-placeholder-count="4">
+            <div onClick="{{ q.go }}" style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:18px;padding:16px;cursor:pointer;min-height:104px;display:flex;flex-direction:column;justify-content:space-between;">
+              <div style="width:36px;height:36px;border-radius:11px;background:{{ q.tint }};display:flex;align-items:center;justify-content:center;font-size:17px;">{{ q.icon }}</div>
+              <div>
+                <div style="font-size:14px;font-weight:600;line-height:1.15;">{{ q.title }}</div>
+                <div style="font-size:11.5px;color:#A89878;margin-top:2px;">{{ q.sub }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div onClick="{{ goCatalogue }}" style="margin-top:24px;background:#2A211B;color:#F5EFE4;border-radius:20px;padding:16px;cursor:pointer;display:flex;align-items:center;gap:16px;">
+          <div style="display:flex;flex:none;">
+            <div style="width:42px;height:42px;border-radius:12px;background:repeating-linear-gradient(45deg,#4A3928,#4A3928 6px,#3A2C20 6px,#3A2C20 12px);border:2px solid #2A211B;"></div>
+            <div style="width:42px;height:42px;border-radius:12px;background:repeating-linear-gradient(45deg,#574431,#574431 6px,#38362F 6px,#38362F 12px);border:2px solid #2A211B;margin-left:-16px;"></div>
+            <div style="width:42px;height:42px;border-radius:12px;background:repeating-linear-gradient(45deg,#664F39,#664F39 6px,#444239 6px,#444239 12px);border:2px solid #2A211B;margin-left:-16px;"></div>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#9B8A74;font-weight:600;">Catalogue</div>
+            <div style="font-size:16px;font-weight:600;line-height:1.15;margin-top:2px;">Explorer toutes les races</div>
+            <div style="font-size:12px;color:#A89878;margin-top:2px;">Photos & caractéristiques</div>
+          </div>
+          <div style="font-size:22px;color:#9B8A74;flex:none;">›</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ===== TOOLS ===== -->
+    <sc-if value="{{ scTools }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="font-size:14px;color:#897A67;line-height:1.5;margin-bottom:22px;">Toutes les fonctions intelligentes pour comprendre et accompagner Stanley.</div>
+        <sc-for list="{{ toolGroups }}" as="g" hint-placeholder-count="4">
+          <div style="margin-bottom:26px;">
+            <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">{{ g.label }}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <sc-for list="{{ g.items }}" as="t" hint-placeholder-count="4">
+                <div onClick="{{ t.go }}" style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:16px;padding:14px;cursor:pointer;display:flex;flex-direction:column;gap:12px;min-height:96px;" style-hover="border-color:#2A211B;">
+                  <div style="width:38px;height:38px;border-radius:11px;background:{{ g.tint }};display:flex;align-items:center;justify-content:center;font-size:18px;">{{ t.icon }}</div>
+                  <div style="font-size:13.5px;font-weight:600;line-height:1.25;">{{ t.title }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <!-- ===== PROFILE ===== -->
+    <sc-if value="{{ scProfile }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="background:#2A211B;color:#F5EFE4;border-radius:24px;padding:24px;text-align:center;">
+          <div style="width:84px;height:84px;border-radius:24px;margin:0 auto 14px;background:repeating-linear-gradient(45deg,#3A2C20,#3A2C20 8px,#2F2316 8px,#2F2316 16px);display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:38px;color:#9B8A74;">B</div>
+          <div style="font-family:'Instrument Serif',serif;font-size:30px;line-height:1;">Stanley</div>
+          <div style="font-size:13px;color:#A89878;margin-top:6px;">Cocker Spaniel Anglais · LOF</div>
+        </div>
+        <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+          <sc-for list="{{ profStats }}" as="p" hint-placeholder-count="3">
+            <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:13px 8px;text-align:center;">
+              <div style="font-family:'Instrument Serif',serif;font-size:21px;">{{ p.v }}</div>
+              <div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#A89878;margin-top:3px;">{{ p.k }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:22px;display:flex;flex-direction:column;gap:10px;">
+          <sc-for list="{{ profLinks }}" as="l" hint-placeholder-count="3">
+            <div onClick="{{ l.go }}" style="display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:16px;padding:15px 16px;cursor:pointer;">
+              <div style="width:38px;height:38px;border-radius:11px;background:#F4E8D5;display:flex;align-items:center;justify-content:center;font-size:17px;flex:none;">{{ l.icon }}</div>
+              <div style="flex:1;font-size:15px;font-weight:600;">{{ l.title }}</div>
+              <div style="color:#D7C7AF;font-size:20px;">›</div>
+            </div>
+          </sc-for>
+        </div>
+        <div onClick="{{ replayOnboarding }}" style="margin-top:18px;text-align:center;color:#A89878;font-size:13px;cursor:pointer;text-decoration:underline;">Revoir l'introduction</div>
+      </div>
+    </sc-if>
+
+    <!-- ===== CARNET ===== -->
+    <sc-if value="{{ scCarnet }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="background:#2A211B;color:#F5EFE4;border-radius:18px;padding:15px 16px;display:flex;gap:12px;align-items:center;">
+          <div style="width:38px;height:38px;border-radius:50%;background:#BC7A2C;display:flex;align-items:center;justify-content:center;font-size:18px;flex:none;">🔔</div>
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:600;">2 rappels à venir</div>
+            <div style="font-size:12px;color:#A89878;margin-top:2px;">Prochain : vaccin CHPPiL dans 15 jours</div>
+          </div>
+        </div>
+
+        <div style="margin-top:24px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">Vaccins</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <sc-for list="{{ vaccins }}" as="v" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px;">
+              <div style="width:8px;height:8px;border-radius:50%;background:{{ v.color }};flex:none;"></div>
+              <div style="flex:1;"><div style="font-size:14.5px;font-weight:600;">{{ v.name }}</div><div style="font-size:12px;color:#A89878;margin-top:2px;">{{ v.detail }}</div></div>
+              <div style="font-size:11px;font-weight:600;color:{{ v.color }};border:1px solid {{ v.color }};border-radius:999px;padding:4px 10px;flex:none;">{{ v.status }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="margin-top:24px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">Vermifuges & traitements</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <sc-for list="{{ vermifuges }}" as="v" hint-placeholder-count="1">
+            <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px;"><div style="font-size:14.5px;font-weight:600;">{{ v.name }}</div><div style="font-size:12px;color:#A89878;margin-top:3px;">{{ v.detail }}</div></div>
+          </sc-for>
+          <sc-for list="{{ traitements }}" as="v" hint-placeholder-count="1">
+            <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px;"><div style="font-size:14.5px;font-weight:600;">{{ v.name }}</div><div style="font-size:12px;color:#A89878;margin-top:3px;">{{ v.detail }}</div></div>
+          </sc-for>
+        </div>
+
+        <div style="margin-top:24px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">Courbe de poids</div>
+        <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:16px;padding:18px 16px 12px;">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:8px;height:110px;">
+            <sc-for list="{{ poidsBars }}" as="p" hint-placeholder-count="6">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end;">
+                <div style="font-size:10px;color:#897A67;font-weight:600;">{{ p.kg }}</div>
+                <div style="width:70%;background:#2A211B;border-radius:5px 5px 0 0;height: {{ p.h }}%;animation:bar .8s ease;"></div>
+                <div style="font-size:10px;color:#A89878;">{{ p.m }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="margin-top:24px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">Rendez-vous</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <sc-for list="{{ rdvList }}" as="r" hint-placeholder-count="2">
+            <div style="display:flex;gap:14px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px;">
+              <div style="text-align:center;flex:none;width:46px;"><div style="font-family:'Instrument Serif',serif;font-size:18px;line-height:1;">{{ r.date }}</div></div>
+              <div style="border-left:1px solid #E9DBC6;padding-left:14px;"><div style="font-size:14px;font-weight:600;">{{ r.motif }}</div><div style="font-size:12px;color:#A89878;margin-top:2px;">{{ r.vet }}</div></div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div onClick="{{ goHealthPhoto }}" style="margin-top:18px;display:flex;align-items:center;gap:12px;background:#F4E8D5;border-radius:16px;padding:15px 16px;cursor:pointer;">
+          <div style="font-size:18px;">🔬</div><div style="flex:1;font-size:14px;font-weight:600;">Analyser un symptôme par photo</div><div style="color:#A89878;font-size:20px;">›</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ===== FICHE DE RACE ===== -->
+    <sc-if value="{{ scFiche }}" hint-placeholder-val="{{ false }}">
+      <div style="animation:rise .35s ease;">
+        <div style="margin:0 20px;height:150px;border-radius:20px;background:repeating-linear-gradient(45deg,#ECDECA,#ECDECA 11px,#E1D1B7 11px,#E1D1B7 22px);display:flex;align-items:center;justify-content:center;">
+          <span style="font-family:ui-monospace,monospace;font-size:11px;color:#A89878;letter-spacing:.05em;">photo · cocker spaniel</span>
+        </div>
+        <div style="padding:18px 20px 0;">
+          <div style="font-family:'Instrument Serif',serif;font-size:30px;line-height:1;">{{ cocker.nom }}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+            <sc-for list="{{ cockerTags }}" as="t" hint-placeholder-count="4">
+              <div style="font-size:12px;font-weight:600;color:#564B40;background:#F4E8D5;border-radius:999px;padding:5px 12px;">{{ t }}</div>
+            </sc-for>
+          </div>
+
+          <div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <sc-for list="{{ ficheStats }}" as="s" hint-placeholder-count="4">
+              <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:13px 14px;">
+                <div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#A89878;font-weight:600;">{{ s.k }}</div>
+                <div style="font-size:14.5px;font-weight:600;margin-top:4px;">{{ s.v }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="margin-top:24px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:8px;">Origine & histoire</div>
+          <div style="font-size:14px;line-height:1.6;color:#564B40;">{{ cocker.histoire }}</div>
+
+          <div style="margin-top:24px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:14px;">Caractère & besoins</div>
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <sc-for list="{{ cockerTraits }}" as="t" hint-placeholder-count="6">
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="font-weight:500;">{{ t.label }}</span><span style="color:#A89878;">{{ t.val }}%</span></div>
+                <div style="height:6px;background:#E9DBC6;border-radius:3px;overflow:hidden;"><div style="height:100%;background:#2A211B;border-radius:3px;width: {{ t.val }}%;animation:bar .8s ease;"></div></div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="margin-top:24px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">Problèmes de santé fréquents</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <sc-for list="{{ cockerSante }}" as="s" hint-placeholder-count="4">
+              <div style="display:flex;gap:10px;align-items:center;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:12px;padding:12px 14px;font-size:13.5px;">
+                <span style="width:6px;height:6px;border-radius:50%;background:#B0543E;flex:none;"></span>{{ s }}
+              </div>
+            </sc-for>
+          </div>
+          <div onClick="{{ goCompare }}" style="margin-top:18px;background:#C2603C;color:#FFF7F0;border-radius:999px;padding:15px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">Comparer à une autre race</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ===== PSY ===== -->
+    <sc-if value="{{ scPsy }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <sc-if value="{{ psyDone }}" hint-placeholder-val="{{ false }}">
+          <div style="text-align:center;padding-top:8px;">
+            <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#A89878;font-weight:600;">Profil dominant</div>
+            <div style="font-family:'Instrument Serif',serif;font-size:34px;line-height:1.1;margin-top:10px;">{{ psyArch }}</div>
+            <div style="font-size:14px;line-height:1.55;color:#564B40;margin-top:12px;">{{ psyBlurb }}</div>
+          </div>
+          <div style="margin-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <sc-for list="{{ psyDims }}" as="d" hint-placeholder-count="4">
+              <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px;">
+                <div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#A89878;font-weight:600;">{{ d.k }}</div>
+                <div style="font-size:15px;font-weight:600;margin-top:4px;">{{ d.v }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top:22px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">Recommandations</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <sc-for list="{{ psyRecos }}" as="r" hint-placeholder-count="3">
+              <div style="display:flex;gap:12px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px;font-size:13.5px;line-height:1.45;"><span style="color:#4E7A45;flex:none;">✓</span>{{ r }}</div>
+            </sc-for>
+          </div>
+          <div onClick="{{ psyRestart }}" style="margin-top:18px;border:1px solid #DBCBB2;border-radius:999px;padding:14px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">Refaire le test</div>
+        </sc-if>
+        <sc-if value="{{ psyAsk }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
+            <div style="font-size:12px;color:#A89878;font-weight:600;">{{ psyStepLabel }}</div>
+          </div>
+          <div style="height:5px;background:#E9DBC6;border-radius:3px;overflow:hidden;margin-top:10px;"><div style="height:100%;background:#2A211B;border-radius:3px;transition:width .3s;width: {{ psyProg }}%;"></div></div>
+          <div style="font-family:'Instrument Serif',serif;font-size:27px;line-height:1.2;margin-top:30px;">{{ psyQ }}</div>
+          <div style="margin-top:24px;display:flex;flex-direction:column;gap:12px;">
+            <sc-for list="{{ psyOpts }}" as="o" hint-placeholder-count="3">
+              <div onClick="{{ psyAnswer }}" style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:16px;padding:18px;font-size:15px;font-weight:500;cursor:pointer;" style-hover="border-color:#2A211B;">{{ o }}</div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <!-- ===== BEHAVIOR ===== -->
+    <sc-if value="{{ scBehavior }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="font-size:14px;color:#897A67;line-height:1.5;">Choisissez un cas ou décrivez le vôtre. L'IA analyse l'âge, la race et le contexte.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
+          <sc-for list="{{ behaviorChips }}" as="c" hint-placeholder-count="3">
+            <div onClick="{{ c.sel }}" style="font-size:13px;font-weight:600;border-radius:999px;padding:9px 14px;cursor:pointer;background:{{ c.bg }};color:{{ c.fg }};border:1px solid {{ c.bd }};">{{ c.label }}</div>
+          </sc-for>
+        </div>
+
+        <div style="margin-top:18px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:18px;padding:18px;">
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#A89878;"><span style="width:7px;height:7px;border-radius:50%;background:#4E7A45;"></span>Analyse IA · {{ bCtx }}</div>
+          <div style="font-family:'Instrument Serif',serif;font-size:24px;margin-top:8px;">« {{ bCase }} »</div>
+
+          <div style="margin-top:18px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:8px;">Causes probables</div>
+          <div style="display:flex;flex-direction:column;gap:7px;">
+            <sc-for list="{{ bCauses }}" as="x" hint-placeholder-count="3"><div style="font-size:13.5px;color:#564B40;line-height:1.4;display:flex;gap:9px;"><span style="color:#BC7A2C;">•</span>{{ x }}</div></sc-for>
+          </div>
+          <div style="margin-top:16px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:8px;">Exercices conseillés</div>
+          <div style="display:flex;flex-direction:column;gap:7px;">
+            <sc-for list="{{ bExos }}" as="x" hint-placeholder-count="3"><div style="font-size:13.5px;color:#564B40;line-height:1.4;display:flex;gap:9px;"><span style="color:#4E7A45;">✓</span>{{ x }}</div></sc-for>
+          </div>
+          <div style="margin-top:16px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:8px;">Erreurs à éviter</div>
+          <div style="display:flex;flex-direction:column;gap:7px;">
+            <sc-for list="{{ bAvoid }}" as="x" hint-placeholder-count="3"><div style="font-size:13.5px;color:#564B40;line-height:1.4;display:flex;gap:9px;"><span style="color:#B0543E;">✕</span>{{ x }}</div></sc-for>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:8px;">Autres cas traités</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <sc-for list="{{ behaviorExtra }}" as="e" hint-placeholder-count="3"><div style="font-size:12px;color:#A89878;border:1px dashed #DBCBB2;border-radius:999px;padding:7px 12px;">{{ e }}</div></sc-for>
+        </div>
+
+        <div style="margin-top:18px;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:999px;padding:7px 7px 7px 18px;">
+          <div style="flex:1;font-size:14px;color:#B6A488;">Décrire un autre problème…</div>
+          <div style="width:38px;height:38px;border-radius:50%;background:#2A211B;color:#F5EFE4;display:flex;align-items:center;justify-content:center;flex:none;">↑</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ===== ACTIVITIES ===== -->
+    <sc-if value="{{ scActivities }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#897A67;"><span style="font-size:15px;">☁</span>{{ actToday.weather }} · adapté au Cocker</div>
+        <div style="margin-top:14px;background:#2A211B;color:#F5EFE4;border-radius:22px;padding:22px;">
+          <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#9B8A74;font-weight:600;">Recommandé aujourd'hui</div>
+          <div style="font-family:'Instrument Serif',serif;font-size:30px;line-height:1.1;margin-top:10px;">{{ actToday.titre }}</div>
+          <div style="display:flex;gap:8px;margin-top:14px;">
+            <div style="font-size:12px;font-weight:600;background:#342817;border-radius:999px;padding:6px 12px;">⏱ {{ actToday.duree }}</div>
+            <div style="font-size:12px;font-weight:600;background:#342817;border-radius:999px;padding:6px 12px;">👃 Flair</div>
+          </div>
+          <div style="font-size:13.5px;color:#D7C7AF;line-height:1.5;margin-top:14px;">{{ actToday.why }}</div>
+        </div>
+
+        <div style="margin-top:24px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">Autres idées</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <sc-for list="{{ actList }}" as="a" hint-placeholder-count="4">
+            <div style="display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:16px;padding:14px;">
+              <div style="width:44px;height:44px;border-radius:13px;background:#F4E8D5;display:flex;align-items:center;justify-content:center;font-size:20px;flex:none;">{{ a.icon }}</div>
+              <div style="flex:1;"><div style="font-size:15px;font-weight:600;">{{ a.title }}</div><div style="font-size:12.5px;color:#A89878;margin-top:2px;">{{ a.desc }}</div></div>
+              <div style="font-size:12px;font-weight:600;color:#897A67;flex:none;">{{ a.dur }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:18px;border:1px solid #DBCBB2;border-radius:999px;padding:14px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">↻ Générer d'autres activités</div>
+      </div>
+    </sc-if>
+
+    <!-- ===== IDENTIFY ===== -->
+    <sc-if value="{{ scIdentify }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <sc-if value="{{ idUpload }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:14px;color:#897A67;line-height:1.5;">Photographiez le chien entier, de profil et en pleine lumière pour un meilleur résultat.</div>
+          <div style="margin-top:18px;height:280px;border-radius:22px;border:1.5px dashed #D7C7AF;background:repeating-linear-gradient(45deg,#F1E6D4,#F1E6D4 11px,#E5D6C0 11px,#E5D6C0 22px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;">
+            <div style="width:60px;height:60px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 4px 14px rgba(0,0,0,.08);">📷</div>
+            <span style="font-family:ui-monospace,monospace;font-size:11px;color:#A89878;">déposer une photo</span>
+          </div>
+          <div onClick="{{ startId }}" style="margin-top:18px;background:#C2603C;color:#FFF7F0;border-radius:999px;padding:16px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">Analyser la photo</div>
+        </sc-if>
+        <sc-if value="{{ idAnalyzing }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:18px;height:280px;border-radius:22px;overflow:hidden;position:relative;background:repeating-linear-gradient(45deg,#3A2C20,#3A2C20 11px,#2F2316 11px,#2F2316 22px);">
+            <div style="position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,#F5EFE4,transparent);box-shadow:0 0 14px #F5EFE4;animation:scanline 1.6s ease-in-out infinite alternate;"></div>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#F5EFE4;">
+              <div style="width:32px;height:32px;border:3px solid #5A4636;border-top-color:#F5EFE4;border-radius:50%;animation:spin .8s linear infinite;"></div>
+              <div style="font-size:13px;letter-spacing:.05em;">Analyse morphologique en cours…</div>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ idResult }}" hint-placeholder-val="{{ false }}">
+          <div style="animation:rise .4s ease;">
+            <div style="background:#2A211B;color:#F5EFE4;border-radius:22px;padding:22px;text-align:center;">
+              <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#9B8A74;font-weight:600;">Race principale</div>
+              <div style="font-family:'Instrument Serif',serif;font-size:30px;line-height:1.1;margin-top:8px;">Cocker Spaniel Anglais</div>
+              <div style="font-family:'Instrument Serif',serif;font-size:52px;line-height:1;margin-top:12px;">87%</div>
+              <div style="font-size:12px;color:#A89878;">de correspondance</div>
+            </div>
+            <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px;"><div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#A89878;font-weight:600;">Croisement</div><div style="font-size:14.5px;font-weight:600;margin-top:4px;">13% Springer</div></div>
+              <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px;"><div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#A89878;font-weight:600;">Confiance</div><div style="font-size:14.5px;font-weight:600;margin-top:4px;color:#4E7A45;">Élevée</div></div>
+              <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px;"><div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#A89878;font-weight:600;">Âge estimé</div><div style="font-size:14.5px;font-weight:600;margin-top:4px;">Adulte</div></div>
+              <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px;"><div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#A89878;font-weight:600;">Gabarit</div><div style="font-size:14.5px;font-weight:600;margin-top:4px;">Moyen</div></div>
+            </div>
+            <div onClick="{{ goFiche }}" style="margin-top:16px;background:#C2603C;color:#FFF7F0;border-radius:999px;padding:15px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">Ouvrir la fiche de race</div>
+            <div onClick="{{ resetId }}" style="margin-top:10px;border:1px solid #DBCBB2;border-radius:999px;padding:14px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">Nouvelle photo</div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <!-- ===== MORPHO ===== -->
+    <sc-if value="{{ scMorpho }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <sc-if value="{{ morphoAsk }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:14px;color:#897A67;line-height:1.5;">Renseignez les caractéristiques observées. Plus elles sont précises, meilleure est l'estimation.</div>
+          <div style="margin-top:18px;display:flex;flex-direction:column;gap:10px;">
+            <sc-for list="{{ morphoFields }}" as="f" hint-placeholder-count="6">
+              <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;">
+                <div><div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#A89878;font-weight:600;">{{ f.k }}</div><div style="font-size:15px;font-weight:600;margin-top:3px;">{{ f.v }}</div></div>
+                <div style="color:#D7C7AF;font-size:18px;">⌄</div>
+              </div>
+            </sc-for>
+          </div>
+          <div onClick="{{ runMorpho }}" style="margin-top:18px;background:#C2603C;color:#FFF7F0;border-radius:999px;padding:16px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">Estimer la race</div>
+        </sc-if>
+        <sc-if value="{{ morphoDone }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:14px;">Races les plus probables</div>
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <sc-for list="{{ morphoResults }}" as="r" hint-placeholder-count="4">
+              <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:16px;padding:15px 16px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><span style="font-size:15px;font-weight:600;">{{ r.name }}</span><span style="font-family:'Instrument Serif',serif;font-size:20px;">{{ r.pct }}%</span></div>
+                <div style="height:6px;background:#E9DBC6;border-radius:3px;overflow:hidden;"><div style="height:100%;background:#2A211B;border-radius:3px;width: {{ r.pct }}%;animation:bar .8s ease;"></div></div>
+              </div>
+            </sc-for>
+          </div>
+          <div onClick="{{ resetMorpho }}" style="margin-top:18px;border:1px solid #DBCBB2;border-radius:999px;padding:14px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">Modifier les critères</div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <!-- ===== COMPARE ===== -->
+    <sc-if value="{{ scCompare }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1;background:#2A211B;color:#F5EFE4;border-radius:16px;padding:14px;text-align:center;"><div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#9B8A74;">{{ cmpATag }}</div><div style="font-size:15px;font-weight:600;margin-top:4px;line-height:1.15;">{{ cmpA }}</div></div>
+          <div style="flex:1;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:16px;padding:14px;text-align:center;"><div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#A89878;">{{ cmpBTag }}</div><div style="font-size:15px;font-weight:600;margin-top:4px;line-height:1.15;">{{ cmpB }}</div></div>
+        </div>
+        <div style="margin-top:20px;display:flex;flex-direction:column;gap:18px;">
+          <sc-for list="{{ compareRows }}" as="r" hint-placeholder-count="7">
+            <div>
+              <div style="font-size:13px;font-weight:600;text-align:center;margin-bottom:8px;">{{ r.label }}</div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:11px;color:#897A67;width:26px;text-align:right;flex:none;">{{ r.a }}</span>
+                <div style="flex:1;display:flex;justify-content:flex-end;background:#F1EEE8;border-radius:4px;height:9px;overflow:hidden;"><div style="height:100%;background:#2A211B;border-radius:4px;width: {{ r.a }}%;"></div></div>
+                <div style="flex:1;background:#F1EEE8;border-radius:4px;height:9px;overflow:hidden;"><div style="height:100%;background:#B6A488;border-radius:4px;width: {{ r.b }}%;"></div></div>
+                <span style="font-size:11px;color:#897A67;width:26px;flex:none;">{{ r.b }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:22px;display:flex;gap:16px;justify-content:center;font-size:12px;color:#897A67;">
+          <div style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:3px;background:#2A211B;"></span>{{ cmpA }}</div>
+          <div style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:3px;background:#B6A488;"></span>{{ cmpB }}</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ===== COMPAT ===== -->
+    <sc-if value="{{ scCompat }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <sc-if value="{{ compatAsk }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:14px;color:#897A67;line-height:1.5;">Décrivez votre mode de vie pour découvrir les races les plus adaptées.</div>
+          <div style="margin-top:18px;display:flex;flex-direction:column;gap:10px;">
+            <sc-for list="{{ compatFields }}" as="f" hint-placeholder-count="5">
+              <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;">
+                <div style="font-size:14.5px;font-weight:500;">{{ f.k }}</div>
+                <div style="font-size:13px;font-weight:600;color:#FFF7F0;background:#C2603C;border-radius:999px;padding:6px 14px;">{{ f.v }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div onClick="{{ runCompat }}" style="margin-top:18px;background:#C2603C;color:#FFF7F0;border-radius:999px;padding:16px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">Trouver mes races</div>
+        </sc-if>
+        <sc-if value="{{ compatDone }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:14px;">Top 5 pour votre mode de vie</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <sc-for list="{{ compatList }}" as="c" hint-placeholder-count="5">
+              <div style="display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:16px;padding:14px;">
+                <div style="font-family:'Instrument Serif',serif;font-size:24px;color:#D7C7AF;width:24px;text-align:center;flex:none;">{{ c.rank }}</div>
+                <div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;">{{ c.name }}</div><div style="font-size:12.5px;color:#A89878;margin-top:2px;line-height:1.35;">{{ c.reason }}</div></div>
+                <div style="text-align:center;flex:none;"><div style="font-family:'Instrument Serif',serif;font-size:20px;">{{ c.score }}</div><div style="font-size:9px;color:#A89878;letter-spacing:.05em;">SCORE</div></div>
+              </div>
+            </sc-for>
+          </div>
+          <div onClick="{{ resetCompat }}" style="margin-top:18px;border:1px solid #DBCBB2;border-radius:999px;padding:14px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">Modifier mes critères</div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <!-- ===== PEDIGREE ===== -->
+    <sc-if value="{{ scPedigree }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px;text-align:center;"><div style="font-family:'Instrument Serif',serif;font-size:22px;">{{ pedCoi }}</div><div style="font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:#A89878;margin-top:2px;">Consanguinité</div></div>
+          <div style="flex:1;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px;text-align:center;"><div style="font-family:'Instrument Serif',serif;font-size:22px;">{{ pedChamps }} ★</div><div style="font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:#A89878;margin-top:2px;">Champions</div></div>
+        </div>
+
+        <div style="margin-top:22px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:14px;">Arbre généalogique</div>
+        <div style="font-size:10px;color:#A89878;letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px;">Grands-parents</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <sc-for list="{{ pedGp }}" as="g" hint-placeholder-count="4">
+            <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:12px;padding:11px 12px;font-size:12.5px;font-weight:600;line-height:1.25;display:flex;align-items:center;gap:6px;"><sc-if value="{{ g.champ }}" hint-placeholder-val="{{ false }}"><span style="color:#BC7A2C;">★</span></sc-if>{{ g.name }}</div>
+          </sc-for>
+        </div>
+        <div style="text-align:center;color:#DBCBB2;font-size:18px;margin:6px 0;">⌄</div>
+        <div style="font-size:10px;color:#A89878;letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px;">Parents</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <sc-for list="{{ pedParents }}" as="p" hint-placeholder-count="2">
+            <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:12px;padding:13px;font-size:13px;font-weight:600;line-height:1.25;"><span style="color:#A89878;">{{ p.sex }}</span> <sc-if value="{{ p.champ }}" hint-placeholder-val="{{ false }}"><span style="color:#BC7A2C;">★</span></sc-if> {{ p.name }}</div>
+          </sc-for>
+        </div>
+        <div style="text-align:center;color:#DBCBB2;font-size:18px;margin:6px 0;">⌄</div>
+        <div style="background:#2A211B;color:#F5EFE4;border-radius:16px;padding:18px;text-align:center;">
+          <div style="font-family:'Instrument Serif',serif;font-size:26px;">Stanley</div>
+          <div style="font-size:12px;color:#A89878;margin-top:4px;">Génération actuelle · {{ pedDesc }}</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ===== HEALTH PHOTO ===== -->
+    <sc-if value="{{ scHealthPhoto }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <sc-if value="{{ hpUpload }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:14px;color:#897A67;line-height:1.5;">Sélectionnez la zone puis photographiez-la de près, bien éclairée.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
+            <sc-for list="{{ hpZones }}" as="z" hint-placeholder-count="4"><div style="font-size:13px;font-weight:600;border-radius:999px;padding:9px 14px;background:{{ z.bg }};color:{{ z.fg }};border:1px solid {{ z.bd }};cursor:pointer;" onClick="{{ z.sel }}">{{ z.label }}</div></sc-for>
+          </div>
+          <div style="margin-top:16px;height:240px;border-radius:22px;border:1.5px dashed #D7C7AF;background:repeating-linear-gradient(45deg,#F1E6D4,#F1E6D4 11px,#E5D6C0 11px,#E5D6C0 22px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;">
+            <div style="width:54px;height:54px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 4px 14px rgba(0,0,0,.08);">🔬</div>
+            <span style="font-family:ui-monospace,monospace;font-size:11px;color:#A89878;">photo · zone oreille</span>
+          </div>
+          <div onClick="{{ startHp }}" style="margin-top:16px;background:#C2603C;color:#FFF7F0;border-radius:999px;padding:16px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">Analyser la zone</div>
+        </sc-if>
+        <sc-if value="{{ hpAnalyzing }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:18px;height:240px;border-radius:22px;overflow:hidden;position:relative;background:repeating-linear-gradient(45deg,#3A2C20,#3A2C20 11px,#2F2316 11px,#2F2316 22px);">
+            <div style="position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,#F5EFE4,transparent);box-shadow:0 0 14px #F5EFE4;animation:scanline 1.4s ease-in-out infinite alternate;"></div>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#F5EFE4;"><div style="width:30px;height:30px;border:3px solid #5A4636;border-top-color:#F5EFE4;border-radius:50%;animation:spin .8s linear infinite;"></div><div style="font-size:13px;">Détection de signes…</div></div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ hpResult }}" hint-placeholder-val="{{ false }}">
+          <div style="animation:rise .4s ease;">
+            <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:18px;padding:18px;">
+              <div style="display:flex;align-items:center;gap:10px;"><div style="width:36px;height:36px;border-radius:50%;background:#BC7A2C;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;flex:none;">!</div><div><div style="font-size:15px;font-weight:700;">Signe détecté · à surveiller</div><div style="font-size:12px;color:#A89878;">Zone : oreille gauche</div></div></div>
+              <div style="margin-top:16px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:8px;">Observations</div>
+              <div style="display:flex;flex-direction:column;gap:7px;">
+                <div style="font-size:13.5px;color:#564B40;display:flex;gap:9px;"><span style="color:#BC7A2C;">•</span>Légère rougeur du conduit auditif</div>
+                <div style="font-size:13.5px;color:#564B40;display:flex;gap:9px;"><span style="color:#BC7A2C;">•</span>Excès de cérumen visible</div>
+                <div style="font-size:13.5px;color:#564B40;display:flex;gap:9px;"><span style="color:#4E7A45;">•</span>Aucun parasite détecté</div>
+              </div>
+              <div style="margin-top:16px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:8px;">Recommandation</div>
+              <div style="font-size:13.5px;color:#564B40;line-height:1.5;">Nettoyez délicatement avec une solution auriculaire adaptée et surveillez 48 h. Fréquent chez le Cocker en raison des oreilles tombantes.</div>
+            </div>
+            <div style="margin-top:14px;background:#F7E6DA;border:1px solid #E6C2AE;border-radius:14px;padding:14px;font-size:12.5px;color:#B0543E;line-height:1.5;">⚠ Cette analyse ne remplace pas l'avis d'un vétérinaire. En cas de doute, consultez.</div>
+            <div onClick="{{ resetHp }}" style="margin-top:14px;border:1px solid #DBCBB2;border-radius:999px;padding:14px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">Nouvelle analyse</div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <!-- ===== TRANSLATE ===== -->
+    <sc-if value="{{ scTranslate }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <sc-if value="{{ trIdle }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:14px;color:#897A67;line-height:1.5;">Filmez votre chien quelques secondes, corps entier visible. L'IA interprète sa posture, sa queue, ses oreilles et son expression.</div>
+          <div style="margin-top:18px;height:300px;border-radius:22px;position:relative;overflow:hidden;background:repeating-linear-gradient(45deg,#ECDECA,#ECDECA 11px,#E1D1B7 11px,#E1D1B7 22px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;">
+            <div style="font-size:40px;animation:wag 1.2s ease-in-out infinite;transform-origin:bottom center;">🐕</div>
+            <span style="font-family:ui-monospace,monospace;font-size:11px;color:#A89878;">vidéo · 0:06</span>
+            <div style="position:absolute;top:14px;left:14px;display:flex;align-items:center;gap:6px;background:rgba(16,15,13,.75);color:#F5EFE4;border-radius:999px;padding:4px 10px;font-size:11px;font-weight:600;"><span style="width:7px;height:7px;border-radius:50%;background:#E5544A;animation:pulsered 1s infinite;"></span>REC</div>
+          </div>
+          <div onClick="{{ startTr }}" style="margin-top:18px;background:#C2603C;color:#FFF7F0;border-radius:999px;padding:16px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">Interpréter le comportement</div>
+        </sc-if>
+        <sc-if value="{{ trAnalyzing }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:18px;height:300px;border-radius:22px;overflow:hidden;position:relative;background:repeating-linear-gradient(45deg,#3A2C20,#3A2C20 11px,#2F2316 11px,#2F2316 22px);">
+            <div style="position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,#F5EFE4,transparent);box-shadow:0 0 14px #F5EFE4;animation:scanline 1.7s ease-in-out infinite alternate;"></div>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#F5EFE4;"><div style="width:32px;height:32px;border:3px solid #5A4636;border-top-color:#F5EFE4;border-radius:50%;animation:spin .8s linear infinite;"></div><div style="font-size:13px;">Lecture du langage corporel…</div></div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ trResult }}" hint-placeholder-val="{{ false }}">
+          <div style="animation:rise .4s ease;">
+            <div style="background:#2A211B;color:#F5EFE4;border-radius:22px;padding:24px;text-align:center;">
+              <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#9B8A74;font-weight:600;">Émotion dominante</div>
+              <div style="font-size:40px;margin-top:10px;">😄</div>
+              <div style="font-family:'Instrument Serif',serif;font-size:30px;line-height:1.1;margin-top:8px;">Invitation au jeu</div>
+              <div style="font-size:13px;color:#A89878;margin-top:8px;">Excitation positive · confiance 91%</div>
+            </div>
+            <div style="margin-top:18px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">Signaux observés</div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <sc-for list="{{ trSignals }}" as="s" hint-placeholder-count="4">
+                <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px;display:flex;justify-content:space-between;gap:12px;"><span style="font-size:13px;font-weight:600;flex:none;">{{ s.k }}</span><span style="font-size:13px;color:#897A67;text-align:right;">{{ s.v }}</span></div>
+              </sc-for>
+            </div>
+            <div onClick="{{ resetTr }}" style="margin-top:16px;border:1px solid #DBCBB2;border-radius:999px;padding:14px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">Nouvelle vidéo</div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <!-- ===== COACH ===== -->
+    <sc-if value="{{ scCoach }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="background:#2A211B;color:#F5EFE4;border-radius:22px;padding:22px;display:flex;align-items:center;gap:18px;">
+          <div style="text-align:center;flex:none;"><div style="font-family:'Instrument Serif',serif;font-size:40px;line-height:1;">40%</div><div style="font-size:10px;color:#9B8A74;letter-spacing:.05em;text-transform:uppercase;margin-top:2px;">programme</div></div>
+          <div style="flex:1;"><div style="font-size:15px;font-weight:600;">Éducation de base</div><div style="font-size:12.5px;color:#A89878;margin-top:4px;line-height:1.4;">5 paliers adaptés à un Cocker de 4 ans. Semaine 2 en cours.</div></div>
+        </div>
+        <div style="margin-top:22px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">Paliers</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <sc-for list="{{ coachList }}" as="c" hint-placeholder-count="5">
+            <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:16px;padding:15px 16px;">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:30px;height:30px;border-radius:9px;background:#F4E8D5;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#564B40;flex:none;">{{ c.n }}</div>
+                <div style="flex:1;min-width:0;"><div style="font-size:14.5px;font-weight:600;">{{ c.theme }}</div><div style="font-size:12px;color:#A89878;margin-top:1px;">{{ c.desc }}</div></div>
+                <div style="font-size:11px;font-weight:600;color:{{ c.col }};flex:none;">{{ c.state }}</div>
+              </div>
+              <div style="height:5px;background:#E9DBC6;border-radius:3px;overflow:hidden;margin-top:12px;"><div style="height:100%;border-radius:3px;background:{{ c.col }};width: {{ c.prog }}%;animation:bar .8s ease;"></div></div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:18px;background:#F4E8D5;border-radius:14px;padding:14px;font-size:12.5px;color:#897A67;line-height:1.5;">💡 Mieux vaut 3 séances de 10 min par jour qu'une seule longue. Le Cocker reste concentré sur de courtes durées.</div>
+      </div>
+    </sc-if>
+
+    <!-- ===== SIMULATOR ===== -->
+    <sc-if value="{{ scSimulator }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="font-size:14px;color:#897A67;line-height:1.5;">Visualisez ce que représente vraiment la vie avec une race, avant d'adopter.</div>
+        <div style="margin-top:16px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;">
+          <div><div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#A89878;font-weight:600;">Race simulée</div><div style="font-size:16px;font-weight:600;margin-top:3px;">{{ sim.breed }}</div></div>
+          <div style="color:#D7C7AF;font-size:18px;">⌄</div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:10px;">
+          <div style="flex:1;background:#2A211B;color:#F5EFE4;border-radius:16px;padding:16px;"><div style="font-size:10px;color:#9B8A74;letter-spacing:.05em;text-transform:uppercase;">Budget annuel</div><div style="font-family:'Instrument Serif',serif;font-size:23px;margin-top:6px;">{{ sim.annual }}</div></div>
+          <div style="flex:1;background:#2A211B;color:#F5EFE4;border-radius:16px;padding:16px;"><div style="font-size:10px;color:#9B8A74;letter-spacing:.05em;text-transform:uppercase;">Temps / jour</div><div style="font-family:'Instrument Serif',serif;font-size:23px;margin-top:6px;">{{ sim.time }}</div></div>
+        </div>
+        <div style="margin-top:22px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:14px;">Exigences</div>
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <sc-for list="{{ simRows }}" as="r" hint-placeholder-count="5">
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="font-weight:500;">{{ r.label }}</span><span style="color:#A89878;">{{ r.tag }}</span></div>
+              <div style="height:6px;background:#E9DBC6;border-radius:3px;overflow:hidden;"><div style="height:100%;background:#2A211B;border-radius:3px;width: {{ r.val }}%;animation:bar .8s ease;"></div></div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:18px;background:#F4E8D5;border-radius:14px;padding:15px 16px;font-size:13px;color:#564B40;line-height:1.55;">{{ sim.note }}</div>
+      </div>
+    </sc-if>
+
+    <!-- ===== CATALOGUE ===== -->
+    <sc-if value="{{ scCatalogue }}" hint-placeholder-val="{{ false }}">
+      <div style="animation:rise .35s ease;">
+        <sc-if value="{{ catGrid }}" hint-placeholder-val="{{ true }}">
+          <div style="padding:4px 20px 0;">
+            <div style="font-size:14px;color:#897A67;line-height:1.5;">Toutes les races enregistrées dans l'application. Touchez une photo pour découvrir ses caractéristiques.</div>
+            <div style="margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+              <sc-for list="{{ catList }}" as="b" hint-placeholder-count="6">
+                <div onClick="{{ b.sel }}" style="cursor:pointer;">
+                  <div style="height:118px;border-radius:16px;background:repeating-linear-gradient(45deg,#ECDECA,#ECDECA 10px,#E1D1B7 10px,#E1D1B7 20px);display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;">
+                    <span style="font-family:ui-monospace,monospace;font-size:9px;color:#A89878;letter-spacing:.04em;">photo</span>
+                  </div>
+                  <div style="font-size:14px;font-weight:600;margin-top:9px;line-height:1.2;">{{ b.nom }}</div>
+                  <div style="font-size:11.5px;color:#A89878;margin-top:2px;">{{ b.meta }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ catDetail }}" hint-placeholder-val="{{ false }}">
+          <div style="animation:rise .3s ease;">
+            <div style="margin:0 20px;height:170px;border-radius:20px;background:repeating-linear-gradient(45deg,#ECDECA,#ECDECA 11px,#E1D1B7 11px,#E1D1B7 22px);display:flex;align-items:flex-end;justify-content:center;padding-bottom:12px;">
+              <span style="font-family:ui-monospace,monospace;font-size:11px;color:#A89878;letter-spacing:.05em;">photo · {{ cbNom }}</span>
+            </div>
+            <div style="padding:16px 20px 0;">
+              <div onClick="{{ backToGrid }}" style="font-size:13px;color:#897A67;cursor:pointer;display:inline-flex;align-items:center;gap:4px;margin-bottom:10px;">‹ Toutes les races</div>
+              <div style="font-family:'Instrument Serif',serif;font-size:29px;line-height:1;">{{ cbNom }}</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+                <sc-for list="{{ cbTags }}" as="t" hint-placeholder-count="3">
+                  <div style="font-size:12px;font-weight:600;color:#564B40;background:#F4E8D5;border-radius:999px;padding:5px 12px;">{{ t }}</div>
+                </sc-for>
+              </div>
+              <div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <sc-for list="{{ cbStats }}" as="s" hint-placeholder-count="5">
+                  <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:13px 14px;">
+                    <div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#A89878;font-weight:600;">{{ s.k }}</div>
+                    <div style="font-size:14.5px;font-weight:600;margin-top:4px;">{{ s.v }}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="margin-top:24px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:14px;">Caractère & besoins</div>
+              <div style="display:flex;flex-direction:column;gap:14px;">
+                <sc-for list="{{ cbTraits }}" as="t" hint-placeholder-count="4">
+                  <div>
+                    <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="font-weight:500;">{{ t.label }}</span><span style="color:#A89878;">{{ t.val }}%</span></div>
+                    <div style="height:6px;background:#E9DBC6;border-radius:3px;overflow:hidden;"><div style="height:100%;background:#2A211B;border-radius:3px;width: {{ t.val }}%;animation:bar .8s ease;"></div></div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="margin-top:20px;background:#F4E8D5;border-radius:14px;padding:15px 16px;font-size:13px;color:#564B40;line-height:1.55;">{{ cbNote }}</div>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <!-- ===== LIFESTYLE ===== -->
+    <sc-if value="{{ scLifestyle }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <sc-if value="{{ lifeAsk }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:14px;color:#897A67;line-height:1.5;">Décrivez votre quotidien : l'IA évalue votre compatibilité avec chaque race.</div>
+          <div style="margin-top:18px;display:flex;flex-direction:column;gap:10px;">
+            <sc-for list="{{ lifeFields }}" as="f" hint-placeholder-count="5">
+              <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                <div style="font-size:14px;font-weight:500;">{{ f.k }}</div>
+                <div style="font-size:13px;font-weight:600;color:#FFF7F0;background:#C2603C;border-radius:999px;padding:6px 13px;text-align:right;">{{ f.v }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div onClick="{{ runLife }}" style="margin-top:18px;background:#C2603C;color:#FFF7F0;border-radius:999px;padding:16px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">Générer le rapport</div>
+        </sc-if>
+        <sc-if value="{{ lifeDone }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#2A211B;color:#F5EFE4;border-radius:20px;padding:20px;font-size:14px;line-height:1.55;">{{ lifeSummary }}</div>
+          <div style="margin-top:22px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:14px;">Compatibilité par race</div>
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <sc-for list="{{ lifeResults }}" as="r" hint-placeholder-count="5">
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:6px;"><span style="font-weight:600;">{{ r.name }}</span><span style="color:{{ r.col }};font-weight:600;">{{ r.pct }}%</span></div>
+                <div style="height:8px;background:#E9DBC6;border-radius:4px;overflow:hidden;"><div style="height:100%;border-radius:4px;background:{{ r.col }};width: {{ r.pct }}%;animation:bar .8s ease;"></div></div>
+              </div>
+            </sc-for>
+          </div>
+          <div onClick="{{ resetLife }}" style="margin-top:20px;border:1px solid #DBCBB2;border-radius:999px;padding:14px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">Modifier mon quotidien</div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <!-- ===== AGE HUMAN ===== -->
+    <sc-if value="{{ scAgehuman }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="background:#2A211B;color:#F5EFE4;border-radius:22px;padding:26px;text-align:center;">
+          <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#9B8A74;font-weight:600;">Âge humain estimé</div>
+          <div style="font-family:'Instrument Serif',serif;font-size:60px;line-height:1;margin-top:10px;">{{ ageBig }}</div>
+          <div style="font-size:13px;color:#A89878;margin-top:8px;">{{ ageSub }}</div>
+        </div>
+        <div style="margin-top:22px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">Table de conversion</div>
+        <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:16px;overflow:hidden;">
+          <sc-for list="{{ ageTable }}" as="r" hint-placeholder-count="5">
+            <div style="display:flex;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #F4E8D5;background:{{ r.bg }};font-size:14px;">
+              <span style="color:#564B40;">{{ r.dog }}</span>
+              <span style="font-weight:600;">{{ r.human }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:18px;background:#F4E8D5;border-radius:14px;padding:15px 16px;font-size:13px;color:#564B40;line-height:1.55;">{{ ageNote }}</div>
+      </div>
+    </sc-if>
+
+    <!-- ===== WEIGHT ===== -->
+    <sc-if value="{{ scWeight }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="background:#2A211B;color:#F5EFE4;border-radius:20px;padding:22px;">
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#9B8A74;"><span style="width:8px;height:8px;border-radius:50%;background:#BC7A2C;"></span>{{ wVerdict }}</div>
+          <div style="display:flex;align-items:flex-end;gap:8px;margin-top:10px;"><span style="font-family:'Instrument Serif',serif;font-size:44px;line-height:1;">{{ wCur }}</span></div>
+          <div style="font-size:12px;color:#A89878;margin-top:6px;">Poids idéal : {{ wIdeal }} · fourchette {{ wRange }}</div>
+          <div style="margin-top:16px;position:relative;height:8px;background:#3A2C20;border-radius:4px;">
+            <div style="position:absolute;left:30%;right:14%;top:0;bottom:0;background:#3F6B4E;border-radius:4px;opacity:.5;"></div>
+            <div style="position:absolute;top:-4px;width:16px;height:16px;border-radius:50%;background:#F5EFE4;border:3px solid #2A211B;left: {{ wPct }}%;"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:#7C6754;margin-top:8px;"><span>Maigre</span><span>Idéal</span><span>Surpoids</span></div>
+        </div>
+        <div style="margin-top:22px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">Objectifs recommandés</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <sc-for list="{{ wObjectifs }}" as="o" hint-placeholder-count="3">
+            <div style="display:flex;gap:12px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px;font-size:13.5px;line-height:1.45;"><span style="color:#4E7A45;flex:none;">✓</span>{{ o }}</div>
+          </sc-for>
+        </div>
+        <div style="margin-top:18px;background:#F4E8D5;border-radius:14px;padding:15px 16px;font-size:13px;color:#564B40;line-height:1.55;">{{ wTip }}</div>
+      </div>
+    </sc-if>
+
+    <!-- ===== ACTIVITY LEVEL ===== -->
+    <sc-if value="{{ scActivitylevel }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="background:#2A211B;color:#F5EFE4;border-radius:20px;padding:22px;text-align:center;">
+          <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#9B8A74;font-weight:600;">Diagnostic</div>
+          <div style="font-family:'Instrument Serif',serif;font-size:30px;margin-top:8px;">{{ alLevel }}</div>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:6px;">
+          <sc-for list="{{ alScale }}" as="s" hint-placeholder-count="3">
+            <div style="flex:1;text-align:center;">
+              <div style="height:6px;border-radius:3px;background:{{ s.col }};"></div>
+              <div style="font-size:10px;color:#A89878;margin-top:6px;font-weight:600;">{{ s.label }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:24px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+          <sc-for list="{{ alStats }}" as="s" hint-placeholder-count="3">
+            <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:13px 8px;text-align:center;">
+              <div style="font-family:'Instrument Serif',serif;font-size:18px;">{{ s.v }}</div>
+              <div style="font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:#A89878;margin-top:3px;">{{ s.k }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:24px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">Recommandations</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <sc-for list="{{ alRecos }}" as="r" hint-placeholder-count="3">
+            <div style="display:flex;gap:12px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px;font-size:13.5px;line-height:1.45;"><span style="color:#2A211B;flex:none;">•</span>{{ r }}</div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ===== BARK PREVENT ===== -->
+    <sc-if value="{{ scBarkprevent }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="font-size:14px;color:#897A67;line-height:1.5;">Identifiez le déclencheur, puis suivez la méthode pas à pas.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
+          <sc-for list="{{ bpTriggers }}" as="t" hint-placeholder-count="4"><div style="font-size:13px;font-weight:600;border-radius:999px;padding:9px 14px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);color:#564B40;">{{ t }}</div></sc-for>
+        </div>
+        <div style="margin-top:22px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">Méthode</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <sc-for list="{{ bpSteps }}" as="s" hint-placeholder-count="5">
+            <div style="display:flex;gap:13px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px;">
+              <div style="width:26px;height:26px;border-radius:8px;background:#2A211B;color:#F5EFE4;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none;">{{ s.n }}</div>
+              <div><div style="font-size:14.5px;font-weight:600;">{{ s.t }}</div><div style="font-size:13px;color:#897A67;line-height:1.45;margin-top:2px;">{{ s.b }}</div></div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:22px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">À éviter</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <sc-for list="{{ bpAvoid }}" as="a" hint-placeholder-count="3"><div style="display:flex;gap:10px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:12px;padding:12px 14px;font-size:13.5px;"><span style="color:#B0543E;flex:none;">✕</span>{{ a }}</div></sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ===== WEATHER PROGRAMS ===== -->
+    <sc-if value="{{ scWeatherprog }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="font-size:14px;color:#897A67;line-height:1.5;">Quand la météo bloque les sorties, voici de quoi dépenser Stanley.</div>
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          <sc-for list="{{ weatherTabs }}" as="t" hint-placeholder-count="3">
+            <div onClick="{{ t.sel }}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;border-radius:12px;padding:11px;cursor:pointer;background:{{ t.bg }};color:{{ t.fg }};border:1px solid {{ t.bd }};">{{ t.icon }} {{ t.label }}</div>
+          </sc-for>
+        </div>
+        <div style="margin-top:18px;display:flex;flex-direction:column;gap:10px;">
+          <sc-for list="{{ weatherItems }}" as="i" hint-placeholder-count="3">
+            <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:16px;padding:16px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:15px;font-weight:600;">{{ i.title }}</span><span style="font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#897A67;background:#F4E8D5;border-radius:999px;padding:4px 9px;">{{ i.tag }}</span></div>
+              <div style="font-size:13px;color:#897A67;margin-top:6px;line-height:1.45;">{{ i.desc }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ===== BODY LANGUAGE ===== -->
+    <sc-if value="{{ scBodylang }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <sc-if value="{{ blIdle }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:14px;color:#897A67;line-height:1.5;">Décrivez la scène, ou importez une photo / vidéo. L'IA décode oreilles, queue, regard et posture.</div>
+          <div style="margin-top:16px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:16px;padding:16px;min-height:96px;font-size:14px;color:#B6A488;line-height:1.5;">Ex. : « Il s'incline vers l'avant, l'arrière relevé, la queue qui remue… »</div>
+          <div style="margin-top:12px;display:flex;gap:10px;">
+            <div style="flex:1;border:1px dashed #D7C7AF;border-radius:14px;padding:16px;text-align:center;font-size:13px;color:#897A67;">📷 Photo</div>
+            <div style="flex:1;border:1px dashed #D7C7AF;border-radius:14px;padding:16px;text-align:center;font-size:13px;color:#897A67;">🎥 Vidéo</div>
+          </div>
+          <div onClick="{{ startBl }}" style="margin-top:16px;background:#C2603C;color:#FFF7F0;border-radius:999px;padding:16px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">Décoder le langage</div>
+          <div style="margin-top:16px;font-size:12px;color:#A89878;">Émotions détectables : <sc-for list="{{ blDetect }}" as="d" hint-placeholder-count="5"><span style="color:#564B40;font-weight:600;">{{ d }} · </span></sc-for></div>
+        </sc-if>
+        <sc-if value="{{ blAnalyzing }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:18px;height:240px;border-radius:22px;overflow:hidden;position:relative;background:repeating-linear-gradient(45deg,#3A2C20,#3A2C20 11px,#2F2316 11px,#2F2316 22px);">
+            <div style="position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,#F5EFE4,transparent);box-shadow:0 0 14px #F5EFE4;animation:scanline 1.5s ease-in-out infinite alternate;"></div>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#F5EFE4;"><div style="width:30px;height:30px;border:3px solid #5A4636;border-top-color:#F5EFE4;border-radius:50%;animation:spin .8s linear infinite;"></div><div style="font-size:13px;">Lecture des signaux…</div></div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ blResult }}" hint-placeholder-val="{{ false }}">
+          <div style="animation:rise .4s ease;">
+            <div style="background:#2A211B;color:#F5EFE4;border-radius:22px;padding:22px;text-align:center;">
+              <div style="font-size:36px;">{{ blEmoji }}</div>
+              <div style="font-family:'Instrument Serif',serif;font-size:28px;margin-top:6px;">{{ blEmotion }}</div>
+              <div style="font-size:12px;color:#A89878;margin-top:6px;">Confiance {{ blConf }}</div>
+            </div>
+            <div style="margin-top:18px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">Lecture détaillée</div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <sc-for list="{{ blParts }}" as="p" hint-placeholder-count="4">
+                <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px;"><div style="font-size:13px;font-weight:700;">{{ p.k }}</div><div style="font-size:13px;color:#897A67;margin-top:3px;line-height:1.45;">{{ p.v }}</div></div>
+              </sc-for>
+            </div>
+            <div onClick="{{ resetBl }}" style="margin-top:16px;border:1px solid #DBCBB2;border-radius:999px;padding:14px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">Nouvelle analyse</div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <!-- ===== GENETICS ===== -->
+    <sc-if value="{{ scGenetics }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="font-size:14px;color:#897A67;line-height:1.5;">Prédispositions héréditaires et dépistages conseillés par race.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
+          <sc-for list="{{ genBreeds }}" as="b" hint-placeholder-count="5"><div onClick="{{ b.sel }}" style="font-size:12.5px;font-weight:600;border-radius:999px;padding:8px 13px;cursor:pointer;background:{{ b.bg }};color:{{ b.fg }};border:1px solid {{ b.bd }};">{{ b.label }}</div></sc-for>
+        </div>
+        <div style="margin-top:18px;background:#2A211B;color:#F5EFE4;border-radius:18px;padding:18px;display:flex;align-items:center;justify-content:space-between;">
+          <div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#9B8A74;font-weight:600;">Profil de vigilance</div><div style="font-family:'Instrument Serif',serif;font-size:24px;margin-top:4px;">{{ genSel }}</div></div>
+          <div style="font-size:13px;font-weight:700;border:1px solid #5A4636;border-radius:999px;padding:7px 14px;">{{ genVig }}</div>
+        </div>
+        <div style="margin-top:20px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">Affections prédisposées</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <sc-for list="{{ genRisks }}" as="r" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px;">
+              <span style="width:8px;height:8px;border-radius:50%;background:{{ r.col }};flex:none;"></span>
+              <div style="flex:1;font-size:14px;font-weight:600;">{{ r.name }}</div>
+              <div style="font-size:11px;font-weight:600;color:{{ r.col }};">{{ r.lvl }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:20px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">Dépistages conseillés</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <sc-for list="{{ genTests }}" as="t" hint-placeholder-count="2"><div style="display:flex;gap:10px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:12px;padding:12px 14px;font-size:13.5px;"><span style="color:#4E7A45;flex:none;">✓</span>{{ t }}</div></sc-for>
+        </div>
+        <div style="margin-top:16px;background:#F7E6DA;border:1px solid #E6C2AE;border-radius:14px;padding:13px;font-size:12.5px;color:#B0543E;line-height:1.5;">⚠ Une prédisposition n'est pas une fatalité. Seul un vétérinaire peut établir un diagnostic.</div>
+      </div>
+    </sc-if>
+
+    <!-- ===== NUTRITION ===== -->
+    <sc-if value="{{ scNutrition }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1;background:#2A211B;color:#F5EFE4;border-radius:16px;padding:14px;text-align:center;"><div style="font-family:'Instrument Serif',serif;font-size:20px;">{{ nutKcal }}</div><div style="font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:#9B8A74;margin-top:3px;">par jour</div></div>
+          <div style="flex:1;background:#2A211B;color:#F5EFE4;border-radius:16px;padding:14px;text-align:center;"><div style="font-family:'Instrument Serif',serif;font-size:20px;">{{ nutProt }}</div><div style="font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:#9B8A74;margin-top:3px;">protéines</div></div>
+          <div style="flex:1;background:#2A211B;color:#F5EFE4;border-radius:16px;padding:14px;text-align:center;"><div style="font-family:'Instrument Serif',serif;font-size:20px;line-height:1.1;">2×</div><div style="font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:#9B8A74;margin-top:3px;">repas</div></div>
+        </div>
+        <div style="margin-top:22px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">Détail des besoins</div>
+        <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:16px;overflow:hidden;">
+          <sc-for list="{{ nutRows }}" as="r" hint-placeholder-count="5">
+            <div style="display:flex;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #F4E8D5;font-size:14px;"><span style="color:#564B40;">{{ r.k }}</span><span style="font-weight:600;">{{ r.v }}</span></div>
+          </sc-for>
+        </div>
+        <div style="margin-top:18px;background:#F4E8D5;border-radius:14px;padding:15px 16px;font-size:13px;color:#564B40;line-height:1.55;">{{ nutTip }}</div>
+        <div onClick="{{ goRecipes }}" style="margin-top:14px;display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:16px;padding:15px 16px;cursor:pointer;"><span style="font-size:18px;">👨‍🍳</span><div style="flex:1;font-size:14px;font-weight:600;">Voir les recettes maison adaptées</div><div style="color:#D7C7AF;font-size:20px;">›</div></div>
+      </div>
+    </sc-if>
+
+    <!-- ===== RECIPES ===== -->
+    <sc-if value="{{ scRecipes }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="font-size:14px;color:#897A67;line-height:1.5;">Recettes équilibrées, adaptées au poids, à l'âge et aux allergies de Stanley.</div>
+        <div style="margin-top:18px;display:flex;flex-direction:column;gap:12px;">
+          <sc-for list="{{ recipes }}" as="r" hint-placeholder-count="3">
+            <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:18px;overflow:hidden;">
+              <div style="height:96px;background:repeating-linear-gradient(45deg,#ECDECA,#ECDECA 10px,#E1D1B7 10px,#E1D1B7 20px);display:flex;align-items:flex-end;justify-content:flex-end;padding:8px;"><span style="font-family:ui-monospace,monospace;font-size:9px;color:#A89878;">photo plat</span></div>
+              <div style="padding:14px 16px;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;"><div style="font-size:15px;font-weight:600;line-height:1.2;">{{ r.nom }}</div><div style="font-size:11px;font-weight:600;color:#897A67;white-space:nowrap;">{{ r.kcal }}</div></div>
+                <div style="font-size:13px;color:#897A67;margin-top:6px;line-height:1.45;">{{ r.desc }}</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;"><sc-for list="{{ r.tags }}" as="t" hint-placeholder-count="2"><span style="font-size:11px;font-weight:600;color:#564B40;background:#F4E8D5;border-radius:999px;padding:4px 10px;">{{ t }}</span></sc-for></div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:16px;border:1px solid #DBCBB2;border-radius:999px;padding:14px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">↻ Proposer d'autres recettes</div>
+        <div style="margin-top:14px;background:#F7E6DA;border:1px solid #E6C2AE;border-radius:14px;padding:13px;font-size:12.5px;color:#B0543E;line-height:1.5;">⚠ Validez tout régime maison avec votre vétérinaire.</div>
+      </div>
+    </sc-if>
+
+    <!-- ===== WORLD MAP ===== -->
+    <sc-if value="{{ scWorldmap }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <sc-if value="{{ worldGrid }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:14px;color:#897A67;line-height:1.5;">Touchez un pays pour découvrir ses races, leur histoire et leur popularité.</div>
+          <div style="margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <sc-for list="{{ worldCountries }}" as="c" hint-placeholder-count="6">
+              <div onClick="{{ c.sel }}" style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:16px;padding:18px 14px;cursor:pointer;text-align:center;" style-hover="border-color:#2A211B;">
+                <div style="font-size:32px;">{{ c.flag }}</div>
+                <div style="font-size:13.5px;font-weight:600;margin-top:8px;line-height:1.2;">{{ c.nom }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ worldHasSel }}" hint-placeholder-val="{{ false }}">
+          <div style="animation:rise .3s ease;">
+            <div onClick="{{ closeCountry }}" style="font-size:13px;color:#897A67;cursor:pointer;margin-bottom:12px;">‹ Tous les pays</div>
+            <div style="background:#2A211B;color:#F5EFE4;border-radius:20px;padding:22px;text-align:center;">
+              <div style="font-size:44px;">{{ wcFlag }}</div>
+              <div style="font-family:'Instrument Serif',serif;font-size:28px;margin-top:6px;">{{ wcNom }}</div>
+              <div style="font-size:12px;color:#A89878;margin-top:8px;">Popularité canine : {{ wcPop }}</div>
+            </div>
+            <div style="margin-top:18px;font-size:14px;color:#564B40;line-height:1.55;">{{ wcHist }}</div>
+            <div style="margin-top:20px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">Races originaires</div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <sc-for list="{{ wcRaces }}" as="r" hint-placeholder-count="4"><div style="display:flex;gap:10px;align-items:center;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:12px;padding:13px 14px;font-size:14px;font-weight:500;"><span style="color:#2A211B;">🐾</span>{{ r }}</div></sc-for>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <!-- ===== TIMELINE ===== -->
+    <sc-if value="{{ scTimeline }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="font-size:14px;color:#897A67;line-height:1.5;">Le journal de vie de Stanley, composé automatiquement.</div>
+        <div style="margin-top:18px;position:relative;padding-left:8px;">
+          <div style="position:absolute;left:26px;top:8px;bottom:8px;width:2px;background:#E9DBC6;"></div>
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <sc-for list="{{ timelineItems }}" as="t" hint-placeholder-count="6">
+              <div style="display:flex;gap:14px;align-items:flex-start;position:relative;">
+                <div style="width:38px;height:38px;border-radius:11px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);display:flex;align-items:center;justify-content:center;font-size:17px;flex:none;z-index:1;">{{ t.icon }}</div>
+                <div style="flex:1;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:13px 14px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#A89878;font-weight:600;">{{ t.type }}</span><span style="font-size:11px;color:#A89878;">{{ t.when }}</span></div>
+                  <div style="font-size:14px;font-weight:500;margin-top:4px;line-height:1.35;">{{ t.desc }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ===== PREDICTIVE ===== -->
+    <sc-if value="{{ scPredictive }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="font-size:14px;color:#897A67;line-height:1.5;">Estimation des risques de santé à partir de la race, l'âge, l'activité et l'alimentation.</div>
+        <div style="margin-top:20px;display:flex;flex-direction:column;gap:16px;">
+          <sc-for list="{{ predRisks }}" as="r" hint-placeholder-count="3">
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font-size:14px;font-weight:600;">{{ r.name }}</span><span style="font-family:'Instrument Serif',serif;font-size:22px;color:{{ r.col }};">{{ r.pct }}%</span></div>
+              <div style="height:8px;background:#E9DBC6;border-radius:4px;overflow:hidden;"><div style="height:100%;border-radius:4px;background:{{ r.col }};width: {{ r.pct }}%;animation:bar .8s ease;"></div></div>
+              <div style="font-size:11px;color:#A89878;margin-top:5px;">{{ r.tag }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:24px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">Facteurs analysés</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <sc-for list="{{ predFactors }}" as="f" hint-placeholder-count="3"><div style="display:flex;gap:10px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:12px;padding:12px 14px;font-size:13.5px;"><span style="color:#897A67;flex:none;">•</span>{{ f }}</div></sc-for>
+        </div>
+        <div style="margin-top:20px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">Pour réduire les risques</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <sc-for list="{{ predRecos }}" as="r" hint-placeholder-count="3"><div style="display:flex;gap:12px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px;font-size:13.5px;line-height:1.45;"><span style="color:#4E7A45;flex:none;">✓</span>{{ r }}</div></sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ===== PAIN ===== -->
+    <sc-if value="{{ scPain }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <sc-if value="{{ painIdle }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:14px;color:#897A67;line-height:1.5;">Filmez ou photographiez votre chien en mouvement. L'IA repère les signes de douleur.</div>
+          <div style="margin-top:18px;height:260px;border-radius:22px;border:1.5px dashed #D7C7AF;background:repeating-linear-gradient(45deg,#F1E6D4,#F1E6D4 11px,#E5D6C0 11px,#E5D6C0 22px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;">
+            <div style="width:54px;height:54px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 4px 14px rgba(0,0,0,.08);">🩺</div>
+            <span style="font-family:ui-monospace,monospace;font-size:11px;color:#A89878;">vidéo · démarche</span>
+          </div>
+          <div onClick="{{ startPain }}" style="margin-top:16px;background:#C2603C;color:#FFF7F0;border-radius:999px;padding:16px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">Analyser la démarche</div>
+        </sc-if>
+        <sc-if value="{{ painAnalyzing }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:18px;height:260px;border-radius:22px;overflow:hidden;position:relative;background:repeating-linear-gradient(45deg,#3A2C20,#3A2C20 11px,#2F2316 11px,#2F2316 22px);">
+            <div style="position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,#F5EFE4,transparent);box-shadow:0 0 14px #F5EFE4;animation:scanline 1.5s ease-in-out infinite alternate;"></div>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#F5EFE4;"><div style="width:30px;height:30px;border:3px solid #5A4636;border-top-color:#F5EFE4;border-radius:50%;animation:spin .8s linear infinite;"></div><div style="font-size:13px;">Analyse posturale…</div></div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ painResult }}" hint-placeholder-val="{{ false }}">
+          <div style="animation:rise .4s ease;">
+            <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:18px;padding:18px;">
+              <div style="display:flex;align-items:center;gap:10px;"><div style="width:36px;height:36px;border-radius:50%;background:#BC7A2C;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;flex:none;">!</div><div style="font-size:15px;font-weight:700;">{{ painVerdict }}</div></div>
+              <div style="margin-top:16px;display:flex;flex-direction:column;gap:9px;">
+                <sc-for list="{{ painSigns }}" as="s" hint-placeholder-count="4">
+                  <div style="display:flex;gap:10px;align-items:flex-start;"><span style="width:7px;height:7px;border-radius:50%;background:{{ s.col }};flex:none;margin-top:6px;"></span><div><span style="font-size:13.5px;font-weight:600;">{{ s.k }} — </span><span style="font-size:13.5px;color:#897A67;">{{ s.v }}</span></div></div>
+                </sc-for>
+              </div>
+              <div style="margin-top:14px;font-size:13.5px;color:#564B40;line-height:1.5;">{{ painAdvice }}</div>
+            </div>
+            <div style="margin-top:14px;background:#F7E6DA;border:1px solid #E6C2AE;border-radius:14px;padding:14px;font-size:12.5px;color:#B0543E;line-height:1.5;">⚠ Une consultation vétérinaire pourrait être utile. Cette analyse ne pose aucun diagnostic.</div>
+            <div onClick="{{ resetPain }}" style="margin-top:14px;border:1px solid #DBCBB2;border-radius:999px;padding:14px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">Nouvelle analyse</div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <!-- ===== WALK ROUTE ===== -->
+    <sc-if value="{{ scWalkroute }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="background:#2A211B;color:#F5EFE4;border-radius:20px;padding:20px;">
+          <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#9B8A74;font-weight:600;">Parcours suggéré</div>
+          <div style="display:flex;gap:18px;margin-top:14px;">
+            <div><div style="font-family:'Instrument Serif',serif;font-size:26px;">{{ walkDuree }}</div><div style="font-size:10px;color:#9B8A74;text-transform:uppercase;letter-spacing:.05em;">durée</div></div>
+            <div><div style="font-family:'Instrument Serif',serif;font-size:26px;">{{ walkDist }}</div><div style="font-size:10px;color:#9B8A74;text-transform:uppercase;letter-spacing:.05em;">distance</div></div>
+            <div><div style="font-family:'Instrument Serif',serif;font-size:26px;">{{ walkRythme }}</div><div style="font-size:10px;color:#9B8A74;text-transform:uppercase;letter-spacing:.05em;">rythme</div></div>
+          </div>
+          <div style="font-size:12px;color:#A89878;margin-top:14px;">Terrain : {{ walkTerrain }}</div>
+        </div>
+        <div style="margin-top:22px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">Déroulé</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <sc-for list="{{ walkSegments }}" as="s" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px;">
+              <div style="width:40px;height:40px;border-radius:12px;background:#F4E8D5;display:flex;align-items:center;justify-content:center;font-size:18px;flex:none;">{{ s.icon }}</div>
+              <div style="flex:1;"><div style="font-size:14px;font-weight:600;">{{ s.d }}</div><div style="font-size:12px;color:#A89878;margin-top:1px;">{{ s.t }}</div></div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:16px;background:#F4E8D5;border-radius:14px;padding:14px;font-size:13px;color:#564B40;line-height:1.5;">{{ walkNote }}</div>
+        <div style="margin-top:14px;border:1px solid #DBCBB2;border-radius:999px;padding:14px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">↻ Générer un autre parcours</div>
+      </div>
+    </sc-if>
+
+    <!-- ===== BARK RECOGNITION ===== -->
+    <sc-if value="{{ scBarkrecog }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <sc-if value="{{ barkIdle }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:14px;color:#897A67;line-height:1.5;">Approchez le micro de votre chien : l'IA tente de classer le type d'aboiement.</div>
+          <div onClick="{{ startBark }}" style="margin-top:24px;height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;cursor:pointer;">
+            <div style="width:96px;height:96px;border-radius:50%;background:#2A211B;color:#F5EFE4;display:flex;align-items:center;justify-content:center;font-size:38px;">🎙</div>
+            <div style="font-size:14px;font-weight:600;color:#2A211B;">Toucher pour écouter</div>
+          </div>
+          <div style="margin-top:8px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:10px;">Types reconnus</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <sc-for list="{{ barkTypes }}" as="t" hint-placeholder-count="4"><div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:12px;padding:12px;"><div style="font-size:13px;font-weight:600;">{{ t.k }}</div><div style="font-size:11.5px;color:#A89878;margin-top:2px;">{{ t.v }}</div></div></sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ barkListening }}" hint-placeholder-val="{{ false }}">
+          <div style="height:280px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;">
+            <div style="display:flex;align-items:flex-end;gap:5px;height:70px;">
+              <div style="width:6px;background:#2A211B;border-radius:3px;height:30%;animation:pulsered 1s infinite;"></div>
+              <div style="width:6px;background:#2A211B;border-radius:3px;height:70%;animation:pulsered .8s infinite;"></div>
+              <div style="width:6px;background:#2A211B;border-radius:3px;height:100%;animation:pulsered .6s infinite;"></div>
+              <div style="width:6px;background:#2A211B;border-radius:3px;height:55%;animation:pulsered .9s infinite;"></div>
+              <div style="width:6px;background:#2A211B;border-radius:3px;height:85%;animation:pulsered .7s infinite;"></div>
+              <div style="width:6px;background:#2A211B;border-radius:3px;height:40%;animation:pulsered 1.1s infinite;"></div>
+            </div>
+            <div style="font-size:13px;color:#897A67;">Écoute en cours…</div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ barkResult }}" hint-placeholder-val="{{ false }}">
+          <div style="animation:rise .4s ease;">
+            <div style="background:#2A211B;color:#F5EFE4;border-radius:22px;padding:24px;text-align:center;">
+              <div style="font-size:36px;">{{ barkEmoji }}</div>
+              <div style="font-family:'Instrument Serif',serif;font-size:28px;margin-top:6px;">{{ barkRes }}</div>
+              <div style="font-size:12px;color:#A89878;margin-top:6px;">Confiance {{ barkConf }}</div>
+            </div>
+            <div style="margin-top:16px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:16px;padding:16px;font-size:13.5px;color:#564B40;line-height:1.55;">{{ barkAdvice }}</div>
+            <div onClick="{{ resetBark }}" style="margin-top:14px;border:1px solid #DBCBB2;border-radius:999px;padding:14px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">Réécouter</div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <!-- ===== MENTAL EXERCISES ===== -->
+    <sc-if value="{{ scMentalex }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="font-size:14px;color:#897A67;line-height:1.5;">Exercices de réflexion calibrés pour un <span style="font-weight:600;color:#564B40;">{{ mexBreed }}</span>.</div>
+        <div style="margin-top:18px;display:flex;flex-direction:column;gap:10px;">
+          <sc-for list="{{ mexItems }}" as="m" hint-placeholder-count="4">
+            <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:16px;padding:16px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:15px;font-weight:600;">{{ m.title }}</span><span style="font-size:11px;font-weight:600;color:{{ m.col }};border:1px solid {{ m.col }};border-radius:999px;padding:3px 10px;">{{ m.lvl }}</span></div>
+              <div style="font-size:13px;color:#897A67;margin-top:6px;line-height:1.45;">{{ m.desc }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:16px;background:#F4E8D5;border-radius:14px;padding:14px;font-size:12.5px;color:#897A67;line-height:1.5;">💡 10 minutes de réflexion fatiguent autant qu'une longue promenade.</div>
+      </div>
+    </sc-if>
+
+    <!-- ===== DOG COMPATIBILITY ===== -->
+    <sc-if value="{{ scDogcompat }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <sc-if value="{{ dcAsk }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:14px;color:#897A67;line-height:1.5;">Comparez Stanley à un autre chien pour estimer leur entente.</div>
+          <div style="margin-top:18px;display:flex;gap:10px;align-items:center;">
+            <div style="flex:1;background:#2A211B;color:#F5EFE4;border-radius:16px;padding:16px;text-align:center;"><div style="font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:#9B8A74;">Chien A</div><div style="font-size:16px;font-weight:600;margin-top:4px;">{{ dcA }}</div></div>
+            <div style="font-size:13px;color:#A89878;font-weight:600;">vs</div>
+            <div style="flex:1;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:16px;padding:16px;text-align:center;"><div style="font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:#A89878;">Chien B</div><div style="font-size:16px;font-weight:600;margin-top:4px;">{{ dcB }}</div></div>
+          </div>
+          <div style="margin-top:14px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:10px;">Profil du chien B</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <sc-for list="{{ dcProfile }}" as="p" hint-placeholder-count="4">
+              <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px 16px;display:flex;justify-content:space-between;"><span style="font-size:14px;font-weight:500;">{{ p.k }}</span><span style="font-size:13px;font-weight:600;color:#FFF7F0;background:#C2603C;border-radius:999px;padding:5px 13px;">{{ p.v }}</span></div>
+            </sc-for>
+          </div>
+          <div onClick="{{ runDc }}" style="margin-top:18px;background:#C2603C;color:#FFF7F0;border-radius:999px;padding:16px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">Estimer la compatibilité</div>
+        </sc-if>
+        <sc-if value="{{ dcDone }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#2A211B;color:#F5EFE4;border-radius:22px;padding:24px;text-align:center;">
+            <div style="font-family:'Instrument Serif',serif;font-size:54px;line-height:1;">{{ dcScore }}%</div>
+            <div style="font-size:14px;color:#A89878;margin-top:6px;">{{ dcVerdict }} · {{ dcA }} & {{ dcB }}</div>
+          </div>
+          <div style="margin-top:22px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">Points d'attention</div>
+          <div style="display:flex;flex-direction:column;gap:9px;">
+            <sc-for list="{{ dcPoints }}" as="p" hint-placeholder-count="4"><div style="display:flex;gap:12px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px;font-size:13.5px;line-height:1.45;"><span style="color:#2A211B;flex:none;">•</span>{{ p }}</div></sc-for>
+          </div>
+          <div onClick="{{ resetDc }}" style="margin-top:18px;border:1px solid #DBCBB2;border-radius:999px;padding:14px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">Tester un autre chien</div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <!-- ===== VET PREP ===== -->
+    <sc-if value="{{ scVetprep }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <sc-if value="{{ vetAsk }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:14px;color:#897A67;line-height:1.5;">Cochez les symptômes observés : l'app prépare un rapport clair pour le vétérinaire.</div>
+          <div style="margin-top:18px;display:flex;flex-wrap:wrap;gap:9px;">
+            <sc-for list="{{ vetSymptoms }}" as="s" hint-placeholder-count="6">
+              <div onClick="{{ s.toggle }}" style="font-size:13px;font-weight:600;border-radius:999px;padding:10px 15px;cursor:pointer;display:flex;align-items:center;gap:7px;background:{{ s.bg }};color:{{ s.fg }};border:1px solid {{ s.bd }};"><span>{{ s.mark }}</span>{{ s.label }}</div>
+            </sc-for>
+          </div>
+          <div onClick="{{ runVet }}" style="margin-top:22px;background:#C2603C;color:#FFF7F0;border-radius:999px;padding:16px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">Générer le rapport</div>
+        </sc-if>
+        <sc-if value="{{ vetDoneF }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:18px;padding:20px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;"><div style="width:32px;height:32px;border-radius:9px;background:#F4E8D5;display:flex;align-items:center;justify-content:center;font-size:15px;">📋</div><div style="font-family:'Instrument Serif',serif;font-size:22px;">Rapport pré-consultation</div></div>
+            <div style="font-size:12px;color:#A89878;margin-bottom:8px;">Stanley · Cocker Spaniel · 4 ans</div>
+            <div style="border-top:1px solid #F4E8D5;">
+              <sc-for list="{{ vetReport }}" as="r" hint-placeholder-count="5">
+                <div style="padding:13px 0;border-bottom:1px solid #F4E8D5;"><div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#A89878;font-weight:600;">{{ r.k }}</div><div style="font-size:14px;margin-top:3px;line-height:1.4;">{{ r.v }}</div></div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="margin-top:14px;display:flex;gap:10px;">
+            <div style="flex:1;background:#C2603C;color:#FFF7F0;border-radius:999px;padding:14px;text-align:center;font-weight:600;font-size:14px;cursor:pointer;">Partager au véto</div>
+            <div onClick="{{ resetVet }}" style="flex:none;border:1px solid #DBCBB2;border-radius:999px;padding:14px 18px;text-align:center;font-weight:600;font-size:14px;cursor:pointer;">Modifier</div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <!-- ===== WHY DOG ===== -->
+    <sc-if value="{{ scWhydog }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="font-size:14px;color:#897A67;line-height:1.5;">Choisissez une question fréquente — ou décrivez la vôtre.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
+          <sc-for list="{{ whyChips }}" as="c" hint-placeholder-count="4"><div onClick="{{ c.sel }}" style="font-size:12.5px;font-weight:600;border-radius:999px;padding:9px 13px;cursor:pointer;background:{{ c.bg }};color:{{ c.fg }};border:1px solid {{ c.bd }};">{{ c.label }}</div></sc-for>
+        </div>
+        <div style="margin-top:18px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:18px;padding:18px;">
+          <div style="font-family:'Instrument Serif',serif;font-size:23px;line-height:1.2;">« {{ whyQ }} »</div>
+          <div style="margin-top:16px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:6px;">Origine comportementale</div>
+          <div style="font-size:14px;color:#564B40;line-height:1.55;">{{ whyOrigin }}</div>
+          <div style="margin-top:16px;display:flex;gap:10px;">
+            <div style="flex:1;background:#E7F0E2;border-radius:12px;padding:13px;"><div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#4E7A45;font-weight:700;">Fréquence</div><div style="font-size:13px;color:#3F6B4E;margin-top:4px;line-height:1.4;">{{ whyFreq }}</div></div>
+          </div>
+          <div style="margin-top:10px;background:#F7E6DA;border-radius:12px;padding:13px;"><div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#B0543E;font-weight:700;">Signe d'alerte</div><div style="font-size:13px;color:#B0543E;margin-top:4px;line-height:1.4;">{{ whyAlert }}</div></div>
+        </div>
+        <div style="margin-top:16px;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:999px;padding:7px 7px 7px 18px;">
+          <div style="flex:1;font-size:14px;color:#B6A488;">Décrire un autre comportement…</div>
+          <div style="width:38px;height:38px;border-radius:50%;background:#2A211B;color:#F5EFE4;display:flex;align-items:center;justify-content:center;flex:none;">↑</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ===== DIGITAL TWIN ===== -->
+    <sc-if value="{{ scTwin }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="background:#2A211B;color:#F5EFE4;border-radius:22px;padding:22px;">
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="width:52px;height:52px;border-radius:15px;flex:none;background:repeating-linear-gradient(45deg,#3A2C20,#3A2C20 7px,#2F2316 7px,#2F2316 14px);display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:22px;color:#9B8A74;">B</div>
+            <div><div style="font-family:'Instrument Serif',serif;font-size:23px;line-height:1;">Jumeau numérique</div><div style="font-size:12px;color:#A89878;margin-top:4px;">Modèle vivant de Stanley</div></div>
+          </div>
+          <div style="margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <sc-for list="{{ twinNow }}" as="r" hint-placeholder-count="4">
+              <div style="background:#241A11;border-radius:12px;padding:11px 13px;"><div style="font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:#7C6754;">{{ r.k }}</div><div style="font-size:14px;font-weight:600;margin-top:3px;">{{ r.v }}</div></div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="margin-top:22px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">Projection</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <sc-for list="{{ twinProj }}" as="p" hint-placeholder-count="4">
+            <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+              <div style="min-width:0;"><div style="font-size:14px;font-weight:600;">{{ p.k }}</div><div style="font-size:12px;color:#A89878;margin-top:2px;line-height:1.35;">{{ p.note }}</div></div>
+              <div style="font-family:'Instrument Serif',serif;font-size:21px;flex:none;">{{ p.v }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:18px;background:#F4E8D5;border-radius:16px;padding:16px;font-size:13.5px;color:#564B40;line-height:1.55;">{{ twinScenario }}</div>
+      </div>
+    </sc-if>
+
+    <!-- ===== SETTINGS ===== -->
+    <sc-if value="{{ scSettings }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px 0;animation:rise .35s ease;">
+        <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">Connexion IA · OpenRouter</div>
+        <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:18px;padding:18px;">
+          <div style="font-size:15px;font-weight:600;">Clé API OpenRouter</div>
+          <div style="font-size:12.5px;color:#897A67;margin-top:4px;line-height:1.5;">Collez votre clé personnelle pour activer les analyses IA de Canidor.</div>
+          <div style="margin-top:14px;display:flex;align-items:center;gap:6px;background:#FAF4EA;border:1px solid #ECDFCB;border-radius:12px;padding:3px 4px 3px 14px;">
+            <input type="{{ orInputType }}" value="{{ orKey }}" onInput="{{ onKey }}" placeholder="sk-or-v1-..." style="flex:1;min-width:0;border:none;background:transparent;outline:none;font-family:ui-monospace,monospace;font-size:13px;color:#2A211B;padding:10px 0;" />
+            <div onClick="{{ toggleShow }}" style="font-size:12px;font-weight:600;color:#897A67;cursor:pointer;padding:8px 10px;flex:none;">{{ orShowLabel }}</div>
+          </div>
+          <div onClick="{{ validateKey }}" style="margin-top:14px;background:#C2603C;color:#FFF7F0;border-radius:999px;padding:14px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">{{ orBtnLabel }}</div>
+          <sc-if value="{{ orHasMsg }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:12px;font-size:13px;font-weight:500;color:{{ orMsgColor }};display:flex;align-items:flex-start;gap:8px;line-height:1.45;"><span style="flex:none;">{{ orMsgIcon }}</span>{{ orMsg }}</div>
+          </sc-if>
+          <a href="https://openrouter.ai/keys" target="_blank" rel="noopener" style="display:inline-block;margin-top:14px;font-size:12.5px;color:#C2603C;text-decoration:none;border-bottom:1px solid #C2603C;padding-bottom:1px;">Obtenir une clé sur openrouter.ai ›</a>
+        </div>
+
+        <sc-if value="{{ orValid }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:26px;display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;">Modèle gratuit</div>
+            <div style="font-size:11px;color:#897A67;">{{ orModelCount }} disponibles</div>
+          </div>
+          <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px;">
+            <sc-for list="{{ freeModels }}" as="m" hint-placeholder-count="6">
+              <div onClick="{{ m.select }}" style="background:#fff;border:1.5px solid {{ m.border }};box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:14px;padding:14px;cursor:pointer;display:flex;align-items:center;gap:12px;">
+                <div style="width:20px;height:20px;border-radius:50%;border:2px solid {{ m.dot }};display:flex;align-items:center;justify-content:center;flex:none;"><div style="width:10px;height:10px;border-radius:50%;background:{{ m.fill }};"></div></div>
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:14.5px;font-weight:600;">{{ m.name }}</span><span style="font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#4E7A45;background:#E7F0E2;border-radius:999px;padding:3px 7px;flex:none;">Gratuit</span></div>
+                  <div style="font-size:11px;color:#A89878;font-family:ui-monospace,monospace;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ m.id }}</div>
+                </div>
+                <span style="font-size:11px;color:#897A67;flex:none;">{{ m.tag }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top:14px;background:#F4E8D5;border-radius:12px;padding:14px;font-size:12.5px;color:#897A67;line-height:1.5;">Modèle actif : <span style="font-weight:700;color:#2A211B;">{{ orModelName }}</span></div>
+        </sc-if>
+
+        <div style="margin-top:26px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A89878;font-weight:600;margin-bottom:12px;">À propos</div>
+        <div style="background:#fff;border:1px solid #ECDFCB;box-shadow:0 2px 14px rgba(86,56,24,.05);border-radius:16px;padding:16px;display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:30px;height:30px;border-radius:9px;background:#C2603C;display:flex;align-items:center;justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="#FFF7F0" stroke="none"><ellipse cx="7" cy="9.2" rx="1.6" ry="2.2"/><ellipse cx="12" cy="7.4" rx="1.7" ry="2.4"/><ellipse cx="17" cy="9.2" rx="1.6" ry="2.2"/><path d="M12 11.4c-2.4 0-4.3 1.9-4.3 3.9 0 1.7 1.4 2.8 3 2.8.6 0 .9-.2 1.3-.2s.7.2 1.3.2c1.6 0 3-1.1 3-2.8 0-2-1.9-3.9-4.3-3.9z"/></svg></div>
+            <div style="font-size:15px;font-weight:600;">Canidor</div>
+          </div>
+          <div style="font-size:12px;color:#A89878;">v0.1 · prototype</div>
+        </div>
+        <div style="margin-top:14px;background:#F4E8D5;border-radius:12px;padding:13px;font-size:12px;color:#897A67;line-height:1.5;">🔒 Votre clé est stockée uniquement sur votre appareil et n'est jamais partagée.</div>
+      </div>
+    </sc-if>
+
+    <!--FEATURE-SCREENS-->
+
+  </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <sc-if value="{{ showNav }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;bottom:0;left:0;right:0;flex:none;display:flex;background:rgba(250,250,247,.92);backdrop-filter:blur(12px);border-top:1px solid #E9DBC6;padding:8px 12px 26px;z-index:20;">
+      <div onClick="{{ navGoHome }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:{{ navHomeC }};">
+        <div style="width:48px;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:{{ navHomeBg }};transition:background .2s;">
+          <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.2 11.3 12 4l8.8 7.3"/><path d="M5.4 9.6V20h13.2V9.6"/><path d="M9.6 20v-5.2h4.8V20"/></svg>
+        </div>
+        <div style="font-size:10px;font-weight:600;letter-spacing:.02em;">Accueil</div>
+      </div>
+      <div onClick="{{ navGoTools }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:{{ navToolsC }};">
+        <div style="width:48px;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:{{ navToolsBg }};transition:background .2s;">
+          <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5c.8 4.3 2.2 5.7 6.5 6.5-4.3.8-5.7 2.2-6.5 6.5-.8-4.3-2.2-5.7-6.5-6.5 4.3-.8 5.7-2.2 6.5-6.5z"/><path d="M18 14.5c.4 1.9 1 2.6 2.9 3-1.9.4-2.5 1-2.9 3-.4-2-1-2.6-2.9-3 1.9-.4 2.5-1.1 2.9-3z"/></svg>
+        </div>
+        <div style="font-size:10px;font-weight:600;letter-spacing:.02em;">Fonctions</div>
+      </div>
+      <div onClick="{{ navGoHealth }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:{{ navHealthC }};">
+        <div style="width:48px;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:{{ navHealthBg }};transition:background .2s;">
+          <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.3C7.5 17 4.5 14 4.5 10.4A3.7 3.7 0 0 1 12 8.2a3.7 3.7 0 0 1 7.5 2.2C19.5 14 16.5 17 12 20.3z"/><path d="M6.6 12h2.4l1.1-2.1 1.7 4 1.2-1.9h2.6"/></svg>
+        </div>
+        <div style="font-size:10px;font-weight:600;letter-spacing:.02em;">Santé</div>
+      </div>
+      <div onClick="{{ navGoProfile }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:{{ navProfileC }};">
+        <div style="width:48px;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:{{ navProfileBg }};transition:background .2s;">
+          <svg width="23" height="23" viewBox="0 0 24 24" fill="currentColor" stroke="none"><ellipse cx="7" cy="9.2" rx="1.7" ry="2.3"/><ellipse cx="12" cy="7.4" rx="1.8" ry="2.5"/><ellipse cx="17" cy="9.2" rx="1.7" ry="2.3"/><path d="M12 11.4c-2.4 0-4.3 1.9-4.3 3.9 0 1.7 1.4 2.8 3 2.8.6 0 .9-.2 1.3-.2s.7.2 1.3.2c1.6 0 3-1.1 3-2.8 0-2-1.9-3.9-4.3-3.9z"/></svg>
+        </div>
+        <div style="font-size:10px;font-weight:600;letter-spacing:.02em;">Profil</div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- HELP SHEET -->
+  <sc-if value="{{ helpOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeHelp }}" style="position:absolute;inset:0;background:rgba(16,15,13,.45);z-index:50;display:flex;align-items:flex-end;">
+      <div onClick="{{ stop }}" style="width:100%;background:#F5EFE4;border-radius:26px 26px 0 0;padding:10px 24px 36px;animation:sheetup .32s cubic-bezier(.2,.8,.2,1);max-height:86%;overflow-y:auto;">
+        <div style="width:38px;height:4px;border-radius:2px;background:#DBCBB2;margin:8px auto 18px;"></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <div style="width:30px;height:30px;border-radius:50%;background:#2A211B;color:#F5EFE4;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none;">?</div>
+          <div style="font-family:'Instrument Serif',serif;font-size:26px;">{{ helpTitle }}</div>
+        </div>
+        <div style="font-size:14px;color:#897A67;line-height:1.5;margin:8px 0 18px;">{{ helpIntro }}</div>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <sc-for list="{{ helpTips }}" as="t" hint-placeholder-count="3">
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <div style="width:24px;height:24px;border-radius:8px;background:#F4E8D5;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#564B40;flex:none;">{{ t.n }}</div>
+              <div>
+                <div style="font-size:14.5px;font-weight:600;">{{ t.title }}</div>
+                <div style="font-size:13px;color:#897A67;line-height:1.5;margin-top:2px;">{{ t.body }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:16px;background:#F4E8D5;border-radius:14px;padding:13px 14px;font-size:12.5px;color:#897A67;line-height:1.5;">⚠ Les analyses par IA sont indicatives et ne remplacent jamais l'avis d'un vétérinaire ou d'un éducateur professionnel.</div>
+        <div onClick="{{ closeHelp }}" style="margin-top:18px;background:#C2603C;color:#FFF7F0;border-radius:999px;padding:15px;text-align:center;font-weight:600;font-size:15px;cursor:pointer;">J'ai compris</div>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:402,&quot;height&quot;:844}}">
+class Component extends DCLogic {
+  state = {
+    onboarded: false, obStep: 0,
+    screen: 'home', helpOpen: false, catSel: null,
+    lifeDone:false, weatherTab:'Pluie', bodyStage:'idle', genBreed:0, countrySel:null,
+    whyActive:0, dogCompatDone:false, vetDone:false, painStage:'idle', barkStage:'idle',
+    orKey:'', orStatus:'idle', orMsg:'', orModel:null, orShow:false,
+    // feature interaction states
+    idStage: 'upload',           // upload | analyzing | result
+    morphoDone: false, morphoFields: 3,
+    psyStep: 0, psyDone: false,
+    compatDone: false,
+    translateStage: 'idle',      // idle | analyzing | result
+    healthPhotoStage: 'idle',
+    behaviorActive: 0,           // index of selected case, -1 custom
+    coachWeek: 1,
+    simWeekly: 90,
+  };
+
+  // ---------- static data ----------
+  OB = [
+    { kicker:'Bienvenue', title:'Tout pour votre chien, au même endroit', body:"Identification, santé, comportement et éducation — un compagnon intelligent pour mieux comprendre Stanley.",
+      features:['Reconnaissance de race par photo','Carnet de santé avec rappels','Coach d\u2019éducation personnalisé'] },
+    { kicker:'Intelligence', title:'Une IA qui observe avec vous', body:"Analysez une photo, traduisez une posture, identifiez un problème de comportement — en quelques secondes.",
+      features:['Traducteur de comportement','Analyse santé par photo','Assistant comportemental'] },
+    { kicker:'Au quotidien', title:'Des conseils adaptés, chaque jour', body:"L\u2019app s\u2019ajuste à la race, l\u2019âge et l\u2019énergie de votre chien pour des recommandations vraiment utiles.",
+      features:['Activités selon la météo','Profil psychologique','Programme d\u2019éducation par paliers'] },
+  ];
+
+  SCREENS = {
+    home:       { title:'Bonjour 👋', tab:'home', root:true },
+    tools:      { title:'Fonctions', tab:'tools', root:true },
+    carnet:     { title:'Carnet de santé', tab:'health', root:true },
+    profile:    { title:'Profil de Stanley', tab:'profile', root:true },
+    catalogue:  { title:'Catalogue des races', tab:'home' },
+    identify:   { title:'Identification', tab:'tools' },
+    morpho:     { title:'Analyse morphologique', tab:'tools' },
+    compare:    { title:'Comparateur de races', tab:'tools' },
+    fiche:      { title:'Fiche de race', tab:'tools' },
+    behavior:   { title:'Assistant comportement', tab:'tools' },
+    psy:        { title:'Profil psychologique', tab:'profile' },
+    compat:     { title:'Compatibilité', tab:'tools' },
+    pedigree:   { title:'Pedigree', tab:'profile' },
+    healthphoto:{ title:'Analyse santé photo', tab:'health' },
+    translate:  { title:'Traducteur canin', tab:'tools' },
+    coach:      { title:'Coach éducation', tab:'tools' },
+    activities: { title:'Activités du jour', tab:'tools' },
+    simulator:  { title:'Simulateur d\u2019adoption', tab:'tools' },
+    lifestyle:    { title:'Analyse du mode de vie', tab:'tools' },
+    agehuman:     { title:'Âge humain', tab:'health' },
+    weight:       { title:'Poids & forme', tab:'health' },
+    activitylevel:{ title:'Niveau d\u2019activité', tab:'tools' },
+    barkprevent:  { title:'Anti-aboiement', tab:'tools' },
+    weatherprog:  { title:'Programmes météo', tab:'tools' },
+    bodylang:     { title:'Langage corporel', tab:'tools' },
+    genetics:     { title:'Maladies génétiques', tab:'health' },
+    nutrition:    { title:'Assistant alimentation', tab:'health' },
+    recipes:      { title:'Recettes maison', tab:'health' },
+    worldmap:     { title:'Carte des races', tab:'tools' },
+    timeline:     { title:'Chronologie de vie', tab:'profile' },
+    predictive:   { title:'Analyse prédictive', tab:'health' },
+    pain:         { title:'Détection de douleur', tab:'health' },
+    walkroute:    { title:'Parcours de promenade', tab:'tools' },
+    barkrecog:    { title:'Reconnaissance d\u2019aboiement', tab:'tools' },
+    mentalex:     { title:'Exercices mentaux', tab:'tools' },
+    dogcompat:    { title:'Compatibilité entre chiens', tab:'tools' },
+    vetprep:      { title:'Pré-consultation véto', tab:'health' },
+    whydog:       { title:'Pourquoi mon chien ?', tab:'tools' },
+    twin:         { title:'Jumeau numérique', tab:'profile' },
+    settings:     { title:'Paramètres', tab:'profile' },
+  };
+
+  HELP = {
+    settings: { intro:"Connectez Canidor à votre propre clé IA OpenRouter.", tips:[['Clé','Collez votre clé sk-or-... puis validez.'],['Modèle','Choisissez un modèle gratuit pour les analyses.'],['Confidentialité','La clé reste stockée sur votre appareil.']] },
+    catalogue: { intro:"Le catalogue de toutes les races enregistrées dans l\u2019app.", tips:[['Parcourir','Faites défiler la galerie de photos.'],['Détails','Touchez une race pour voir ses caractéristiques.'],['Comparer','Repérez la race qui ressemble le plus à votre chien.']] },
+    lifestyle: { intro:"Mesurez la compatibilité entre votre quotidien et chaque race.", tips:[['Quotidien','Logement, enfants, télétravail, temps libre, expérience.'],['Rapport','Un score de compatibilité par race.'],['Décision','Idéal avant une adoption.']] },
+    agehuman: { intro:"Convertit l\u2019âge canin en \u201Cannées humaines\u201D.", tips:[['Calcul','Basé sur la taille et la race, pas la règle des 7 ans.'],['Étapes','La 1re année compte le plus.'],['Repère','Situe votre chien dans sa vie.']] },
+    weight: { intro:"Compare le poids réel au poids théorique de la race.", tips:[['Idéal','Fourchette selon l\u2019âge et le standard.'],['Écart','Détection de surpoids ou de maigreur.'],['Objectif','Des cibles concrètes à atteindre.']] },
+    activitylevel: { intro:"Évalue si votre chien est assez (ou trop) stimulé.", tips:[['Données','Promenades, jeux et activités enregistrés.'],['Verdict','Sous-stimulation, normal ou suractivité.'],['Équilibre','Des conseils pour ajuster.']] },
+    barkprevent: { intro:"Des préconisations ciblées contre les aboiements.", tips:[['Déclencheur','Identifiez la cause (fenêtre, solitude…).'],['Méthode','Des solutions positives, sans punition.'],['Régularité','La constance fait la différence.']] },
+    weatherprog: { intro:"Des programmes d\u2019activités selon la météo difficile.", tips:[['Conditions','Pluie, canicule ou grand froid.'],['Intérieur','Beaucoup de jeux mentaux à la maison.'],['Sécurité','Évite les sorties à risque.']] },
+    bodylang: { intro:"Décodez le langage corporel par texte, photo ou vidéo.", tips:[['Entrée','Décrivez, ou importez une image/vidéo.'],['Signaux','Oreilles, queue, regard et posture expliqués.'],['Émotion','Stress, peur, excitation, agressivité, détente.']] },
+    genetics: { intro:"Les prédispositions génétiques propres à chaque race.", tips:[['Race','Sélectionnez la race concernée.'],['Vigilance','Un profil de risque hiérarchisé.'],['Prévention','Les dépistages conseillés.']] },
+    nutrition: { intro:"Calcule les besoins nutritionnels de votre chien.", tips:[['Profil','Race, âge, poids et activité.'],['Calcul','Calories, protéines et portions.'],['Ajuste','Évolue avec son mode de vie.']] },
+    recipes: { intro:"Des recettes maison adaptées à votre chien.", tips:[['Adapté','Selon poids, âge et allergies.'],['Équilibre','Apports validés par calcul.'],['Vétérinaire','Validez tout régime maison avec un pro.']] },
+    worldmap: { intro:"Voyagez à travers les races du monde entier.", tips:[['Pays','Touchez un pays pour ses races.'],['Histoire','Origines et popularité.'],['Ludique','Pour explorer et apprendre.']] },
+    timeline: { intro:"Le journal de vie automatique de votre chien.", tips:[['Souvenirs','Photos, poids, santé et apprentissages.'],['Automatique','L\u2019IA assemble la chronologie.'],['Mémoire','Toute sa vie au même endroit.']] },
+    predictive: { intro:"Anticipe les risques de santé à long terme.", tips:[['Facteurs','Race, âge, activité, alimentation.'],['Risques','Obésité, articulations, cœur.'],['Agir','Réduisez les risques dès maintenant.']] },
+    pain: { intro:"Repère des signes de douleur sur photo ou vidéo.", tips:[['Signes','Posture anormale, boiterie, dos voûté.'],['Alerte','Vous oriente vers une consultation.'],['Limite','Ne remplace pas un vétérinaire.']] },
+    walkroute: { intro:"Génère un parcours de promenade sur mesure.", tips:[['Calibré','Météo, âge et énergie du chien.'],['Détails','Durée, rythme et jeux intégrés.'],['Varié','Un nouveau parcours à chaque fois.']] },
+    barkrecog: { intro:"Le téléphone écoute et classe l\u2019aboiement.", tips:[['Écoute','Approchez le micro de votre chien.'],['Types','Alerte, jeu, solitude, demande.'],['Indicatif','Une estimation, pas une certitude.']] },
+    mentalex: { intro:"Des exercices mentaux selon la race.", tips:[['Race','Adaptés à l\u2019intelligence du chien.'],['Progressif','Du plus simple au plus complexe.'],['Fatigue','10 min de réflexion = une longue balade.']] },
+    dogcompat: { intro:"Estime l\u2019entente entre deux chiens.", tips:[['Profils','Âge, sexe, race, tempérament.'],['Score','Compatibilité estimée.'],['Attention','Les points à surveiller.']] },
+    vetprep: { intro:"Préparez votre visite chez le vétérinaire.", tips:[['Symptômes','Cochez ce que vous observez.'],['Chronologie','Depuis quand, à quelle fréquence.'],['Rapport','Un résumé clair à montrer au véto.']] },
+    whydog: { intro:"Comprenez les comportements étonnants de votre chien.", tips:[['Décrire','Posez votre question librement.'],['Explication','Origine et fréquence normale.'],['Alerte','Quand s\u2019inquiéter.']] },
+    twin: { intro:"Un modèle vivant de votre chien qui se projette dans le futur.", tips:[['Modèle','Santé, activité, comportement, alimentation.'],['Simulation','Poids, vieillissement et risques futurs.'],['Scénarios','Voyez l\u2019effet de vos choix.']] },
+    home:      { intro:"Votre tableau de bord : l\u2019essentiel sur Stanley en un coup d\u2019\u0153il.", tips:[['Profil','La carte du haut résume race, âge et indice de forme.'],['Alertes','Les rappels santé urgents remontent automatiquement ici.'],['Accès rapide','Touchez une carte pour ouvrir directement la fonction.']] },
+    tools:     { intro:"Toutes les fonctions intelligentes, regroupées par thème.", tips:[['Identité','Identifiez et comparez les races.'],['Comportement','Comprenez et accompagnez votre chien.'],['Au quotidien','Activités, coach et simulateur d\u2019adoption.']] },
+    identify:  { intro:"Reconnaissance de race à partir d\u2019une simple photo.", tips:[['Cadrage','Photographiez le chien entier, de profil, en pleine lumière.'],['Résultat','Race principale, taux de croisement et niveau de confiance.'],['Âge','L\u2019IA distingue aussi chiot et adulte.']] },
+    morpho:    { intro:"Pas de photo ? Décrivez la morphologie pour estimer la race.", tips:[['Précision','Plus vous renseignez de critères, plus l\u2019estimation est fiable.'],['Mesures','Taille au garrot et poids sont les plus déterminants.'],['Résultat','Une liste de races classées par probabilité.']] },
+    compare:   { intro:"Comparez deux races côte à côte sur 7 critères.", tips:[['Critères','Énergie, éducation, compatibilité enfants/chats, aboiements\u2026'],['Lecture','Plus la barre est longue, plus le trait est marqué.'],['Choix','Idéal avant une adoption ou pour mieux situer votre chien.']] },
+    fiche:     { intro:"La fiche complète d\u2019une race, de l\u2019origine à la santé.", tips:[['Standard','Groupe FCI, taille, poids et espérance de vie officiels.'],['Santé','Les problèmes fréquents à surveiller pour la race.'],['Besoins','Énergie, exercice et entretien du poil.']] },
+    behavior:  { intro:"Décrivez un problème : l\u2019IA propose des pistes adaptées.", tips:[['Contexte','Indiquez l\u2019âge, la race et la situation déclenchante.'],['Plan','Causes probables, exercices et erreurs à éviter.'],['Limite','Pour l\u2019agressivité, consultez un éducateur certifié.']] },
+    psy:       { intro:"Un court questionnaire révèle le tempérament de votre chien.", tips:[['Honnêteté','Répondez selon le comportement réel, pas idéal.'],['Profil','Vous obtenez un archétype et 4 dimensions clés.'],['Conseils','Des recommandations adaptées au profil obtenu.']] },
+    compat:    { intro:"Trouvez les races faites pour votre mode de vie.", tips:[['Logement','Appartement ou maison, présence d\u2019un jardin.'],['Foyer','Enfants, autres animaux, temps disponible.'],['Résultat','Un top 5 de races compatibles, avec score.']] },
+    pedigree:  { intro:"L\u2019arbre généalogique et les lignées de votre chien.", tips:[['Lignée','Remontez sur 3 générations avec les champions.'],['Consanguinité','Le coefficient (COI) mesure le risque génétique.'],['Élevage','Utile pour suivre descendants et accouplements.']] },
+    carnet:    { intro:"Le carnet de santé numérique, toujours avec vous.", tips:[['Suivi','Vaccins, vermifuges, traitements et poids centralisés.'],['Rappels','Des alertes automatiques avant chaque échéance.'],['Partage','Exportable pour le vétérinaire (à venir).']] },
+    healthphoto:{ intro:"Un contrôle visuel par photo de zones sensibles.", tips:[['Zones','Oreilles, yeux, peau et pelage.'],['Signes','Rougeurs, inflammations ou parasites visibles.'],['Important','Un signalement n\u2019est pas un diagnostic — consultez.']] },
+    translate: { intro:"Filmez votre chien : l\u2019IA interprète son langage corporel.", tips:[['Cadrage','Filmez le corps entier, queue et oreilles visibles.'],['Lecture','Posture, queue, oreilles et expression analysées.'],['Émotion','Stress, jeu, peur, excitation ou vigilance.']] },
+    coach:     { intro:"Un programme d\u2019éducation progressif sur plusieurs semaines.", tips:[['Objectifs','Rappel, marche en laisse, assis, couché, pas bouger.'],['Adaptation','La difficulté s\u2019ajuste à l\u2019âge et aux progrès.'],['Régularité','Mieux vaut 10 min par jour qu\u2019une longue séance.']] },
+    activities:{ intro:"Des idées d\u2019activités selon la race et la météo.", tips:[['Météo','Les suggestions changent s\u2019il pleut ou s\u2019il fait beau.'],['Variété','Jeux d\u2019intelligence, sport, pistage, parcours maison.'],['Énergie','Calibré sur les besoins du Cocker.']] },
+    simulator: { intro:"Simulez la vie avec une race avant d\u2019adopter.", tips:[['Coût','Estimation du budget annuel réaliste.'],['Temps','Heures d\u2019activité et d\u2019entretien par jour.'],['Réalité','Bruit, poils et problèmes de santé probables.']] },
+  };
+
+  // shared rich data
+  COCKER = {
+    nom:'Cocker Spaniel Anglais', origine:'Royaume-Uni', groupe:'Groupe 8 (Leveurs & rapporteurs)',
+    vie:'12 – 15 ans', poids:'13 – 14,5 kg', taille:'38 – 41 cm',
+    histoire:"Développé au pays de Galles et en Angleterre pour lever et rapporter la bécasse (\u201Cwoodcock\u201D), d\u2019où son nom. Le plus petit des chiens de chasse leveurs britanniques, devenu chien de compagnie très populaire au XXe siècle.",
+    traits:[['Niveau d\u2019énergie',72],['Besoin d\u2019exercice',70],['Intelligence',80],['Facilité d\u2019éducation',75],['Entretien du poil',82],['Sociabilité',90]],
+    sante:['Otites (oreilles tombantes)','Atrophie rétinienne progressive','Dysplasie de la hanche','Affections oculaires','Surpoids si sous-exercé'],
+    tags:['Affectueux','Joyeux','Sportif','Sensible'],
+  };
+
+  BREEDS = [
+    { nom:'Cocker Spaniel Anglais', groupe:'Groupe 8', origine:'Royaume-Uni', taille:'38–41 cm', poids:'13–14,5 kg', vie:'12–15 ans',
+      tags:['Affectueux','Joyeux','Sportif'], traits:[['Énergie',72],['Facilité d\u2019éducation',75],['Sociabilité',90],['Entretien du poil',82]],
+      note:'Oreilles tombantes à surveiller (otites). Idéal en famille active.' },
+    { nom:'Berger Australien', groupe:'Groupe 1', origine:'États-Unis', taille:'46–58 cm', poids:'16–32 kg', vie:'12–15 ans',
+      tags:['Intelligent','Actif','Loyal'], traits:[['Énergie',95],['Facilité d\u2019éducation',85],['Sociabilité',80],['Entretien du poil',65]],
+      note:'Très fort besoin de stimulation mentale et physique.' },
+    { nom:'Cavalier King Charles', groupe:'Groupe 9', origine:'Royaume-Uni', taille:'30–33 cm', poids:'5–8 kg', vie:'9–14 ans',
+      tags:['Doux','Câlin','Sociable'], traits:[['Énergie',45],['Facilité d\u2019éducation',70],['Sociabilité',95],['Entretien du poil',60]],
+      note:'Parfait en appartement. Sensible aux affections cardiaques.' },
+    { nom:'Husky Sibérien', groupe:'Groupe 5', origine:'Sibérie', taille:'50–60 cm', poids:'16–27 kg', vie:'12–15 ans',
+      tags:['Endurant','Indépendant','Vocal'], traits:[['Énergie',95],['Facilité d\u2019éducation',55],['Sociabilité',70],['Entretien du poil',70]],
+      note:'Grand fugueur, supporte mal la chaleur. ~2 h d\u2019activité/jour.' },
+    { nom:'Bouledogue Français', groupe:'Groupe 9', origine:'France', taille:'27–35 cm', poids:'8–14 kg', vie:'10–12 ans',
+      tags:['Calme','Affectueux','Drôle'], traits:[['Énergie',40],['Facilité d\u2019éducation',65],['Sociabilité',85],['Entretien du poil',30]],
+      note:'Brachycéphale : respiration à surveiller, effort par temps chaud.' },
+    { nom:'Border Collie', groupe:'Groupe 1', origine:'Royaume-Uni', taille:'46–56 cm', poids:'12–20 kg', vie:'12–15 ans',
+      tags:['Vif','Brillant','Travailleur'], traits:[['Énergie',98],['Facilité d\u2019éducation',95],['Sociabilité',70],['Entretien du poil',60]],
+      note:'La race la plus intelligente : s\u2019ennuie vite sans occupation.' },
+    { nom:'Golden Retriever', groupe:'Groupe 8', origine:'Royaume-Uni', taille:'51–61 cm', poids:'25–34 kg', vie:'10–12 ans',
+      tags:['Gentil','Patient','Fidèle'], traits:[['Énergie',70],['Facilité d\u2019éducation',90],['Sociabilité',95],['Entretien du poil',70]],
+      note:'Excellent chien de famille. Sujet à la dysplasie.' },
+    { nom:'Beagle', groupe:'Groupe 6', origine:'Royaume-Uni', taille:'33–40 cm', poids:'9–11 kg', vie:'12–15 ans',
+      tags:['Curieux','Gourmand','Joueur'], traits:[['Énergie',80],['Facilité d\u2019éducation',55],['Sociabilité',85],['Entretien du poil',40]],
+      note:'Suit son flair : rappel difficile, tendance à la prise de poids.' },
+    { nom:'Carlin', groupe:'Groupe 9', origine:'Chine', taille:'25–30 cm', poids:'6–8 kg', vie:'12–15 ans',
+      tags:['Affectueux','Comique','Calme'], traits:[['Énergie',35],['Facilité d\u2019éducation',60],['Sociabilité',90],['Entretien du poil',40]],
+      note:'Très attaché à son maître. Respiration et yeux à surveiller.' },
+    { nom:'Berger Allemand', groupe:'Groupe 1', origine:'Allemagne', taille:'55–65 cm', poids:'22–40 kg', vie:'9–13 ans',
+      tags:['Loyal','Protecteur','Intelligent'], traits:[['Énergie',85],['Facilité d\u2019éducation',90],['Sociabilité',70],['Entretien du poil',65]],
+      note:'Polyvalent et fidèle. Prédisposé à la dysplasie de la hanche.' },
+  ];
+
+  NF = {
+    lifestyle:{
+      fields:[['Logement','Maison avec jardin'],['Enfants','Oui (6 et 9 ans)'],['Télétravail','3 j / semaine'],['Temps libre','Modéré'],['Expérience','Intermédiaire']],
+      results:[['Golden Retriever',92],['Cavalier King Charles',88],['Cocker Spaniel',84],['Beagle',71],['Border Collie',48]],
+      summary:"Votre quotidien convient à 92% à un Golden Retriever, mais seulement à 48% à un Border Collie : votre temps libre modéré couvre mal son immense besoin d\u2019activité.",
+    },
+    agehuman:{ big:'33 ans', sub:'Cocker · 4 ans → adulte',
+      table:[['1 an','15 ans'],['4 ans','33 ans'],['7 ans','45 ans'],['10 ans','57 ans'],['13 ans','69 ans']],
+      note:"La première année équivaut à ~15 ans humains, la deuxième à ~9 ans, puis ~4 ans par an pour un chien de taille moyenne." },
+    weight:{ current:'17 kg', ideal:'14,0 kg', range:'13,0 – 14,5 kg', verdict:'Surpoids léger', pct:80,
+      objectifs:['Réduire la ration d’environ 10%','Augmenter l’activité quotidienne','Repeser dans 3 semaines'],
+      tip:"À 17 kg, Stanley dépasse le standard du Cocker (13–14,5 kg). Une perte progressive de 2 à 3 kg lui ferait du bien." },
+    activitylevel:{ level:'Activité normale', idx:62, scale:['Sous-stimulation','Normal','Suractivité'],
+      stats:[['Promenades','14 / sem'],['Jeux','8 / sem'],['Activités','3 / sem']],
+      recos:['Équilibre satisfaisant pour un Cocker de 4 ans.','Ajoutez 1 séance de flair les jours de pluie.','Surveillez les signes de fatigue après le sport.'] },
+    barkprevent:{ triggers:['À la fenêtre','À la solitude','Demande d\u2019attention','Sonnette'],
+      steps:[['Identifier le déclencheur','Notez le contexte exact de chaque aboiement.'],['Réduire l\u2019exposition','Film occultant, bruit blanc, espace calme.'],['Récompenser le silence','Marquez et récompensez les moments calmes.'],['Dépenser avant','Une balade avant les pics d\u2019aboiement.'],['Ignorer la demande','Ne cédez pas à l\u2019aboiement d\u2019attention.']],
+      avoid:['Crier (perçu comme une participation)','Collier anti-aboiement','Punir après coup'] },
+    weather:{
+      Pluie:{ icon:'🌧', items:[['Jeux d\u2019intelligence','Tapis de fouille & gobelets','Mental'],['Cache-cache friandises','Dans tout l\u2019appartement','Flair'],['Apprentissage de tour','\u201CFais le beau\u201D en 3 séances','Éducation']] },
+      Canicule:{ icon:'🔥', items:[['Sorties tôt / tard','Avant 8h et après 21h','Physique'],['Tapis rafraîchissant','Repos au frais','Confort'],['Kong glacé','Friandises congelées','Mental']] },
+      Hiver:{ icon:'❄', items:[['Balade dynamique','Rythme soutenu pour se réchauffer','Physique'],['Parcours intérieur','Slalom & sauts bas','Physique'],['Mastication longue','Os à mâcher adapté','Calme']] },
+    },
+    bodylang:{ emotion:'Détente', conf:'88%', emoji:'😌',
+      parts:[['Oreilles','Au repos, ni dressées ni plaquées'],['Queue','Basse et molle, légers mouvements'],['Regard','Doux, clignements lents'],['Posture','Poids réparti, corps relâché']],
+      detect:['Stress','Peur','Excitation','Agressivité','Détente'] },
+    genetics:{
+      breeds:['Berger Allemand','Cocker Spaniel','Golden Retriever','Bouledogue Français','Cavalier King Charles'],
+      data:{
+        'Berger Allemand':{ vig:'Élevée', risks:[['Dysplasie de la hanche','Fréquent'],['Myélopathie dégénérative','Modéré'],['Ballonnement gastrique','Modéré']], tests:['Radiographie hanches/coudes','Test ADN myélopathie'] },
+        'Cocker Spaniel':{ vig:'Modérée', risks:[['Atrophie rétinienne progressive','Modéré'],['Otites chroniques','Fréquent'],['Dysplasie de la hanche','Faible']], tests:['Examen ophtalmo annuel','Contrôle des oreilles'] },
+        'Golden Retriever':{ vig:'Élevée', risks:[['Dysplasie hanche/coude','Fréquent'],['Cancers (prédisposition)','Modéré'],['Affections cardiaques','Modéré']], tests:['Radiographie articulaire','Bilan cardiaque'] },
+        'Bouledogue Français':{ vig:'Élevée', risks:[['Syndrome brachycéphale','Fréquent'],['Hernies discales','Modéré'],['Allergies cutanées','Fréquent']], tests:['Bilan respiratoire','Suivi dermatologique'] },
+        'Cavalier King Charles':{ vig:'Très élevée', risks:[['Maladie valvulaire mitrale','Fréquent'],['Syringomyélie','Modéré']], tests:['Échographie cardiaque','IRM si signes neuro'] },
+      } },
+    nutrition:{ kcal:'760 kcal', prot:'52 g', portions:'2 repas · ≈ 205 g',
+      rows:[['Besoin énergétique','760 kcal / jour'],['Protéines','52 g (≈ 28%)'],['Lipides','22 g'],['Ration croquettes','≈ 205 g / jour'],['Répartition','2 repas (matin / soir)']],
+      tip:"Calcul pour un adulte stérilisé de 17 kg, activité modérée. Recalculé automatiquement à chaque pesée." },
+    recipes:[
+      { nom:'Poulet, riz & courgette', kcal:'310 kcal / portion', tags:['Sans céréales ✕','Digeste'], desc:'Blanc de poulet, riz complet, courgette vapeur, filet d\u2019huile de colza.' },
+      { nom:'Bœuf maigre & patate douce', kcal:'340 kcal / portion', tags:['Riche en fer'], desc:'Bœuf 5% MG, patate douce, carottes, persil.' },
+      { nom:'Poisson blanc & quinoa', kcal:'290 kcal / portion', tags:['Hypoallergénique'], desc:'Cabillaud, quinoa, haricots verts, huile de poisson.' },
+    ],
+    world:{
+      countries:[
+        ['Royaume-Uni','🇬🇧',['Cocker Spaniel','Beagle','Border Collie','Golden Retriever'],'Berceau de nombreuses races de chasse et de berger.','Très élevée'],
+        ['France','🇫🇷',['Bouledogue Français','Berger de Beauce','Caniche','Braque'],'Des bouviers aux chiens de salon raffinés.','Élevée'],
+        ['Allemagne','🇩🇪',['Berger Allemand','Teckel','Boxer','Doberman'],'Réputée pour ses chiens de travail polyvalents.','Élevée'],
+        ['États-Unis','🇺🇸',['Berger Australien','Pitbull','Coonhound'],'Races de ranch et de compagnie modernes.','Élevée'],
+        ['Japon','🇯🇵',['Akita','Shiba Inu','Spitz japonais'],'Races ancestrales au tempérament indépendant.','Croissante'],
+        ['Russie / Sibérie','🇷🇺',['Husky Sibérien','Samoyède','Borzoï'],'Chiens de traîneau endurants du Grand Nord.','Modérée'],
+      ] },
+    timeline:[
+      ['Aujourd\u2019hui','Apprentissage','A maîtrisé le \u201Cpas bouger\u201D 30 s','📘'],
+      ['Il y a 3 j','Poids','Pesée : 17,0 kg (à surveiller)','⚖'],
+      ['12 mars','Santé','Rappel vaccinal CHPPiL effectué','💉'],
+      ['28 févr.','Photo','Première neige 🐾','📷'],
+      ['15 janv.','Apprentissage','Marche en laisse sans tirer','📘'],
+      ['2 nov.','Événement','Arrivée à la maison','🏡'],
+    ],
+    predictive:{ risks:[['Risque d\u2019obésité',32,'Modéré'],['Risque articulaire',24,'Faible'],['Risque cardiaque',12,'Faible']],
+      factors:['Activité modérée mais régulière','Poids stable au standard','Race peu prédisposée au cœur'],
+      recos:['Maintenir 1h d\u2019activité quotidienne','Surveiller la ration en cas de baisse d\u2019activité','Bilan articulaire dès 7 ans'] },
+    pain:{ signs:[['Posture','Dos légèrement voûté détecté','warn'],['Démarche','Report de poids sur l\u2019arrière','warn'],['Mobilité','Hésitation au lever','warn'],['Visage','Aucune tension faciale','ok']],
+      verdict:'Signes légers · à surveiller', advice:"Plusieurs indices d\u2019inconfort postérieur. Limitez les sauts et observez 48 h." },
+    walk:{ duree:'35 min', rythme:'Modéré', dist:'2,4 km', terrain:'Parc & sentiers',
+      segments:[['0–10 min','Échauffement au pas','🚶'],['10–25 min','Trot + 2 jeux de rappel','🎾'],['25–35 min','Reniflage libre & retour calme','👃']],
+      note:'Adapté à un Cocker adulte par temps nuageux et frais.' },
+    bark:{ result:'Demande d\u2019attention', conf:'82%', emoji:'🔊',
+      types:[['Alerte','Bref, répété, aigu'],['Jeu','Aigu, entrecoupé'],['Solitude','Plaintif, modulé'],['Demande','Insistant, dirigé vers vous']],
+      advice:"Aboiement court et dirigé vers vous : répondez au besoin (eau, sortie) sans renforcer l\u2019insistance." },
+    mentalex:{ breed:'Cocker Spaniel', items:[
+      ['Recherche olfactive','Cacher 5 friandises dans la pièce','Facile'],
+      ['Discrimination de jouets','Nommer puis rapporter le bon jouet','Moyen'],
+      ['Boîte à problèmes','Ouvrir des trappes pour la récompense','Moyen'],
+      ['Parcours de réflexion','Enchaîner 3 ordres dans l\u2019ordre','Difficile']] },
+    dogcompat:{ a:'Stanley', b:'Luna',
+      bProfile:[['Âge','3 ans'],['Sexe','Femelle'],['Race','Labrador'],['Tempérament','Calme']],
+      score:78, verdict:'Bonne compatibilité',
+      points:['Sexes opposés : entente facilitée.','Niveaux d\u2019énergie proches.','Présenter en terrain neutre la première fois.','Surveiller le partage des jouets au début.'] },
+    vet:{ symptoms:['Perte d\u2019appétit','Vomissements','Boiterie','Léthargie','Démangeaisons','Toux'],
+      checked:['Léthargie','Perte d\u2019appétit'],
+      report:[['Motif','Baisse de forme depuis 3 jours'],['Symptômes','Léthargie, appétit réduit'],['Début','Il y a 3 jours, progressif'],['Alimentation','Ration habituelle, boit normalement'],['Comportement','Moins joueur, dort davantage']] },
+    why:{ cases:[
+      { q:'Tourne sur lui-même avant de dormir', origin:'Comportement ancestral : aplatir l\u2019herbe et vérifier les alentours avant de se coucher.', freq:'Tout à fait normal et fréquent.', alert:'Si cela devient obsessif ou douloureux, consultez.' },
+      { q:'Mange de l\u2019herbe', origin:'Régulation digestive ou simple appétence ; comportement courant.', freq:'Occasionnel = normal.', alert:'Si quotidien + vomissements répétés, consultez.' },
+      { q:'Penche la tête quand je parle', origin:'Ajustement de l\u2019ouïe et lecture de vos expressions ; signe d\u2019attention.', freq:'Normal et plutôt bon signe.', alert:'Si penchée en permanence, vérifiez les oreilles.' },
+      { q:'Lèche frénétiquement ses pattes', origin:'Stress, allergie ou irritation cutanée.', freq:'Léger = normal.', alert:'Si rougeurs ou perte de poils, consultez.' } ] },
+    twin:{ now:[['Poids','17 kg'],['Forme','74 / 100'],['Activité','Normale'],['Âge','4 ans (33 ans humains)']],
+      proj:[['Poids dans 18 mois','17,8 kg','+0,8 kg si rien ne change'],['Risque de surpoids','54%','déjà au-dessus du standard'],['Articulations','Stables','bilan conseillé dès 7 ans'],['Énergie','Légère baisse','vers 6–7 ans']],
+      scenario:"Si le niveau d\u2019activité actuel se maintient, le risque de surpoids dans 18 mois est estimé à 54%. +20 min d\u2019activité/jour le ramènerait à 30%." },
+  };
+
+  COMPARE = {
+    a:{ nom:'Cocker Spaniel', tag:'Votre chien' },
+    b:{ nom:'Berger Australien', tag:'Comparé' },
+    rows:[
+      ['Énergie',72,95],['Intelligence',80,95],['Facilité d\u2019éducation',75,85],
+      ['Besoin d\u2019exercice',70,95],['Compatibilité enfants',90,80],
+      ['Compatibilité chats',70,60],['Aboiements',60,65],
+    ],
+  };
+
+  PSYQ = [
+    { q:"Comment réagit votre chien face à un inconnu ?", opts:['Il fonce le saluer','Il observe puis approche','Il reste en retrait'] },
+    { q:"Après une promenade d\u2019une heure, votre chien est\u2026", opts:['Toujours partant pour plus','Calme et satisfait','Épuisé'] },
+    { q:"Devant un nouveau jouet, il\u2026", opts:['Le démonte en analysant','Joue sans réfléchir','S\u2019en désintéresse vite'] },
+    { q:"Quand vous quittez la pièce, il\u2026", opts:['Vous suit partout','Reste tranquille','Cherche puis se recouche'] },
+  ];
+  PSYRESULT = {
+    archetype:"L\u2019explorateur enthousiaste",
+    blurb:"Curieux, sociable et plein d\u2019allant. Stanley a besoin de nouveauté et d\u2019interactions pour s\u2019épanouir ; l\u2019ennui est son principal ennemi.",
+    dims:[['Tempérament','Sociable & vif'],['Niveau d\u2019énergie','Élevé'],['Besoins cognitifs','Importants'],['Besoins sociaux','Élevés']],
+    recos:['Variez les parcours de promenade pour nourrir sa curiosité.','Intégrez 10 min de jeux d\u2019intelligence par jour.','Privilégiez les renforcements positifs courts et fréquents.'],
+  };
+
+  COMPAT = [
+    ['Cavalier King Charles', 96, 'Calme, affectueux, parfait en appartement'],
+    ['Bichon Frisé', 92, 'Petit, sociable, peu d\u2019exercice'],
+    ['Carlin', 89, 'Très attaché, adapté aux enfants'],
+    ['Bouledogue Français', 86, 'Tranquille, peu d\u2019aboiements'],
+    ['Cocker Spaniel', 81, 'Joyeux mais demande plus d\u2019activité'],
+  ];
+
+  HEALTH = {
+    vaccins:[
+      ['CHPPiL','À jour','Rappel 12/03/2027','ok'],
+      ['Rage','À jour','Rappel 12/03/2027','ok'],
+      ['Toux du chenil','Bientôt','Rappel 05/07/2026','warn'],
+    ],
+    vermifuges:[['Milbemax','15/04/2026','Prochain : 15/07/2026','ok']],
+    traitements:[['Anti-puces (Bravecto)','01/05/2026','Actif jusqu\u2019au 01/08/2026','ok']],
+    poids:[['Jan',12.6],['Fév',12.9],['Mar',13.0],['Avr',13.1],['Mai',13.2],['Juin',13.2]],
+    rdv:[['28 juin','Contrôle annuel + vaccin','Dr. Lemoine'],['14 sept.','Détartrage','Clinique des Tilleuls']],
+  };
+
+  COACH = [
+    { n:1, theme:'Le rappel', desc:'Revenir au pied à la voix', prog:100, state:'Terminé' },
+    { n:2, theme:'Marche en laisse', desc:'Sans tirer, allure régulière', prog:70, state:'En cours' },
+    { n:3, theme:'Assis & Couché', desc:'Positions à la demande', prog:30, state:'En cours' },
+    { n:4, theme:'Pas bouger', desc:'Rester en place malgré les distractions', prog:0, state:'À venir' },
+    { n:5, theme:'Distractions', desc:'Obéir en environnement stimulant', prog:0, state:'À venir' },
+  ];
+
+  ACTIVITIES = {
+    today:{ titre:'Pistage olfactif', duree:'20 min', why:"Idéal pour le flair développé du Cocker, par temps couvert.", weather:'Nuageux · 17°' },
+    list:[
+      ['Jeux d\u2019intelligence','15 min','Tapis de fouille & gobelets','🧠'],
+      ['Exercice physique','30 min','Rapport de balle au parc','🎾'],
+      ['Recherche olfactive','20 min','Cacher 5 friandises','👃'],
+      ['Parcours maison','15 min','Slalom entre coussins','🏠'],
+    ],
+  };
+
+  SIM = {
+    breed:'Husky Sibérien',
+    annual:'≈ 2 100 € / an', time:'≈ 2 h / jour',
+    rows:[['Activité sportive',90,'Très élevé'],['Stimulation mentale',85,'Forte'],['Niveau de bruit',70,'Hurlements'],['Quantité de poils',95,'Mue intense'],['Risques santé',45,'Dysplasie, yeux']],
+    note:"Posséder un Husky représente environ 2 h d\u2019activité par jour et un fort besoin de stimulation mentale. Peu adapté à la vie sédentaire ou aux climats chauds.",
+  };
+
+  BEHAVIOR = [
+    { case:'Mordille les meubles', ctx:'Chiot · phase de dentition',
+      causes:['Poussée dentaire (3–6 mois)','Ennui / manque de stimulation','Recherche d\u2019attention'],
+      exos:['Proposez 2–3 jouets à mâcher adaptés','Augmentez les sorties et jeux de flair','Récompensez quand il mâche le bon objet'],
+      avoid:['Le gronder après coup (inefficace)','Lui donner une vieille chaussure','Le laisser seul sans alternative à mâcher'] },
+    { case:'Anxiété de séparation', ctx:'Adulte · vocalises au départ',
+      causes:['Hyper-attachement','Départs trop chargés émotionnellement','Manque d\u2019autonomie'],
+      exos:['Désensibilisez les rituels de départ','Départs progressifs (1, 5, 15 min)','Jouet distributeur au moment de partir'],
+      avoid:['Punir à votre retour','Faire de grands au revoir','Multiplier les retours pour vérifier'] },
+    { case:'Aboiements excessifs', ctx:'Adulte · à la fenêtre',
+      causes:['Stimuli visuels (passants)','Excitation non canalisée','Renforcement involontaire'],
+      exos:['Réduisez l\u2019accès visuel (film occultant)','Apprenez le \u201Csilence\u201D récompensé','Dépensez avant les pics d\u2019activité'],
+      avoid:['Crier (perçu comme participation)','Colliers anti-aboiements','Ignorer la cause de fond'] },
+  ];
+
+  // ---------- helpers ----------
+  go = (s) => this.setState({ screen:s, helpOpen:false });
+  back = () => { if(this.state.screen==='catalogue' && this.state.catSel!=null){ this.setState({catSel:null}); return; } const t = (this.SCREENS[this.state.screen]||{}).tab||'home'; const root={home:'home',tools:'tools',health:'carnet',profile:'profile'}[t]; this.setState({ screen:root }); };
+  openHelp = () => this.setState({ helpOpen:true });
+  closeHelp = () => this.setState({ helpOpen:false });
+  stop = (e) => { e.stopPropagation(); };
+  nextOb = () => { if(this.state.obStep>=this.OB.length-1){ this.setState({onboarded:true}); } else { this.setState(s=>({obStep:s.obStep+1})); } };
+  skipOb = () => this.setState({ onboarded:true });
+
+  analyze = (key) => { this.setState({ [key]:'analyzing' }); setTimeout(()=>this.setState({ [key]:'result' }), 2000); };
+  resetStage = (key) => this.setState({ [key]:'idle' });
+
+  FREE_MODELS = [
+    { id:'deepseek/deepseek-r1:free', name:'DeepSeek R1', tag:'Raisonnement' },
+    { id:'deepseek/deepseek-chat-v3-0324:free', name:'DeepSeek V3', tag:'Polyvalent' },
+    { id:'meta-llama/llama-3.3-70b-instruct:free', name:'Llama 3.3 70B', tag:'Meta' },
+    { id:'google/gemini-2.0-flash-exp:free', name:'Gemini 2.0 Flash', tag:'Google' },
+    { id:'qwen/qwen-2.5-72b-instruct:free', name:'Qwen 2.5 72B', tag:'Alibaba' },
+    { id:'mistralai/mistral-small-3.1-24b-instruct:free', name:'Mistral Small 3.1', tag:'Mistral' },
+  ];
+
+  componentDidMount(){
+    try{
+      const k = localStorage.getItem('canidor_or_key');
+      const m = localStorage.getItem('canidor_or_model');
+      if(k){ this.setState({ orKey:k, orStatus:'valid', orMsg:'Clé enregistrée sur cet appareil.', orModel:m||null }); }
+      else if(m){ this.setState({ orModel:m }); }
+    }catch(e){}
+  }
+
+  onKey = (e) => this.setState({ orKey:e.target.value, orStatus:'idle', orMsg:'' });
+  toggleShow = () => this.setState(s=>({ orShow:!s.orShow }));
+  selectModel = (id) => { try{ localStorage.setItem('canidor_or_model', id); }catch(e){} this.setState({ orModel:id }); };
+  validateKey = async () => {
+    const k = (this.state.orKey||'').trim();
+    if(!/^sk-or-/.test(k) || k.length < 16){ this.setState({ orStatus:'invalid', orMsg:'Format invalide : la clé doit commencer par « sk-or-… ».' }); return; }
+    this.setState({ orStatus:'checking', orMsg:'' });
+    try{
+      const r = await fetch('https://openrouter.ai/api/v1/auth/key', { headers:{ Authorization:'Bearer '+k } });
+      if(r.ok){ try{ localStorage.setItem('canidor_or_key', k); }catch(e){} this.setState({ orStatus:'valid', orMsg:'Clé validée auprès d\u2019OpenRouter.' }); }
+      else { this.setState({ orStatus:'invalid', orMsg:'Clé refusée par OpenRouter (code '+r.status+').' }); }
+    }catch(e){
+      try{ localStorage.setItem('canidor_or_key', k); }catch(_){}
+      this.setState({ orStatus:'valid', orMsg:'Clé enregistrée (vérification réseau indisponible ici).' });
+    }
+  };
+
+  renderVals() {
+    const st = this.state;
+    const cur = this.SCREENS[st.screen] || this.SCREENS.home;
+    const tab = cur.tab;
+    const ob = this.OB[st.obStep] || this.OB[0];
+
+    const navColor = (t) => tab===t ? '#C2603C' : '#B6A488';
+    const navItems = [
+      { label:'Accueil', icon:'⌂', color:navColor('home'), go:()=>this.go('home') },
+      { label:'Fonctions', icon:'◳', color:navColor('tools'), go:()=>this.go('tools') },
+      { label:'Santé', icon:'♥', color:navColor('health'), go:()=>this.go('carnet') },
+      { label:'Profil', icon:'◑', color:navColor('profile'), go:()=>this.go('profile') },
+    ];
+
+    const help = this.HELP[st.screen] || this.HELP.home;
+    const helpTips = (help.tips||[]).map((t,i)=>({ n:i+1, title:t[0], body:t[1] }));
+
+    const tg = (icon,title,id) => ({ icon, title, go:()=>this.go(id) });
+    const toolGroups = [
+      { label:'Identité & races', tint:'#F3E2C6', items:[
+        tg('📷','Identification photo','identify'),
+        tg('📐','Analyse morphologique','morpho'),
+        tg('⚖','Comparateur','compare'),
+        tg('📖','Fiche de race','fiche'),
+        tg('🐾','Catalogue des races','catalogue'),
+        tg('🗺','Carte du monde','worldmap'),
+        tg('🧬','Maladies génétiques','genetics'),
+      ]},
+      { label:'Adoption & compatibilité', tint:'#E2ECDA', items:[
+        tg('🏠','Mode de vie','lifestyle'),
+        tg('🏡','Compatibilité adoption','compat'),
+        tg('🤝','Compatibilité chiens','dogcompat'),
+        tg('🔮','Simulateur d\u2019adoption','simulator'),
+      ]},
+      { label:'Comportement & langage', tint:'#F4DFD7', items:[
+        tg('💬','Assistant comportement','behavior'),
+        tg('🧭','Profil psychologique','psy'),
+        tg('🎥','Traducteur (vidéo)','translate'),
+        tg('🐕','Langage corporel','bodylang'),
+        tg('❓','Pourquoi mon chien ?','whydog'),
+        tg('🔊','Reconnaissance aboiement','barkrecog'),
+        tg('🤫','Anti-aboiement','barkprevent'),
+      ]},
+      { label:'Santé & prévention', tint:'#DBEAE0', items:[
+        tg('♥','Carnet de santé','carnet'),
+        tg('🔬','Analyse santé photo','healthphoto'),
+        tg('⚖','Poids & forme','weight'),
+        tg('⏳','Âge humain','agehuman'),
+        tg('🩺','Détection de douleur','pain'),
+        tg('📊','Analyse prédictive','predictive'),
+        tg('📋','Pré-consultation véto','vetprep'),
+      ]},
+      { label:'Alimentation', tint:'#F0E1CC', items:[
+        tg('🍖','Assistant alimentation','nutrition'),
+        tg('👨\u200d🍳','Recettes maison','recipes'),
+      ]},
+      { label:'Activité & éducation', tint:'#DDE7EF', items:[
+        tg('🎓','Coach d\u2019éducation','coach'),
+        tg('☀','Activités du jour','activities'),
+        tg('🌦','Programmes météo','weatherprog'),
+        tg('🧭','Parcours de promenade','walkroute'),
+        tg('🧠','Exercices mentaux','mentalex'),
+        tg('📈','Niveau d\u2019activité','activitylevel'),
+      ]},
+      { label:'Suivi & avancé', tint:'#E7E1EF', items:[
+        tg('🕓','Chronologie de vie','timeline'),
+        tg('✨','Jumeau numérique','twin'),
+        tg('🌳','Pedigree & lignées','pedigree'),
+      ]},
+    ];
+
+    return {
+      // chrome
+      showOnboarding: !st.onboarded,
+      showAppBar: st.onboarded,
+      showNav: st.onboarded && !st.helpOpen,
+      showBack: !cur.root,
+      headerTitle: (st.screen==='catalogue'&&st.catSel!=null)?this.BREEDS[st.catSel].nom:cur.title,
+      helpOpen: st.helpOpen,
+      helpTitle: 'Aide — '+cur.title,
+      helpIntro: help.intro,
+      helpTips,
+      navItems,
+      navHomeC:navColor('home'), navToolsC:navColor('tools'), navHealthC:navColor('health'), navProfileC:navColor('profile'),
+      navHomeBg: tab==='home'?'#F6E2D8':'transparent', navToolsBg: tab==='tools'?'#F6E2D8':'transparent',
+      navHealthBg: tab==='health'?'#F6E2D8':'transparent', navProfileBg: tab==='profile'?'#F6E2D8':'transparent',
+      navGoHome:()=>this.go('home'), navGoTools:()=>this.go('tools'), navGoHealth:()=>this.go('carnet'), navGoProfile:()=>this.go('profile'),
+      back:this.back, openHelp:this.openHelp, closeHelp:this.closeHelp, stop:this.stop,
+      // onboarding
+      obKicker:ob.kicker, obTitle:ob.title, obBody:ob.body, obFeatures:ob.features,
+      obCta: st.obStep>=this.OB.length-1 ? 'Commencer' : 'Continuer',
+      obDots: this.OB.map((_,i)=>({ bg: i<=st.obStep ? '#F5EFE4' : '#4A3928' })),
+      nextOb:this.nextOb, skipOb:this.skipOb,
+      // screen flags
+      scHome: st.screen==='home', scTools: st.screen==='tools',
+      // home
+      homeAlerts:[
+        { text:'Rappel vaccin CHPPiL', when:'dans 15 j', color:'#BC7A2C' },
+        { text:'Vermifuge à renouveler', when:'dans 24 j', color:'#4E7A45' },
+      ],
+      homeQuick:[
+        { icon:'💬', tint:'#F4DFD7', title:'Comportement', sub:'Poser un problème', go:()=>this.go('behavior') },
+        { icon:'🎥', tint:'#DDE7EF', title:'Traducteur', sub:'Filmer Stanley', go:()=>this.go('translate') },
+        { icon:'🧭', tint:'#E7E1EF', title:'Profil psy.', sub:'Test 4 questions', go:()=>this.go('psy') },
+        { icon:'☀', tint:'#F3E2C6', title:'Activités', sub:'Selon la météo', go:()=>this.go('activities') },
+      ],
+      goActivities:()=>this.go('activities'), goCarnet:()=>this.go('carnet'), goTools:()=>this.go('tools'),
+      // tools
+      toolGroups,
+
+      // ---- screen flags ----
+      scCarnet: st.screen==='carnet', scProfile: st.screen==='profile',
+      scIdentify: st.screen==='identify', scMorpho: st.screen==='morpho',
+      scCompare: st.screen==='compare', scFiche: st.screen==='fiche',
+      scBehavior: st.screen==='behavior', scPsy: st.screen==='psy',
+      scCompat: st.screen==='compat', scPedigree: st.screen==='pedigree',
+      scHealthPhoto: st.screen==='healthphoto', scTranslate: st.screen==='translate',
+      scCoach: st.screen==='coach', scActivities: st.screen==='activities',
+      scSimulator: st.screen==='simulator',
+
+      // ---- profile ----
+      profStats:[{k:'Âge',v:'4 ans'},{k:'Poids',v:'17 kg'},{k:'Sexe',v:'Mâle'}],
+      profLinks:[
+        {icon:'🧭',title:'Profil psychologique',go:()=>this.go('psy')},
+        {icon:'🌳',title:'Pedigree & lignées',go:()=>this.go('pedigree')},
+        {icon:'📖',title:'Fiche de race',go:()=>this.go('fiche')},
+        {icon:'♥',title:'Carnet de santé',go:()=>this.go('carnet')},
+        {icon:'⚙',title:'Paramètres',go:()=>this.go('settings')},
+      ],
+      replayOnboarding:()=>this.setState({onboarded:false,obStep:0}),
+      goHealthPhoto:()=>this.go('healthphoto'), goCompare:()=>this.go('compare'),
+
+      // ---- fiche stats / psy gate ----
+      ficheStats:[
+        {k:'Origine',v:this.COCKER.origine},{k:'Groupe FCI',v:this.COCKER.groupe},
+        {k:'Espérance de vie',v:this.COCKER.vie},{k:'Poids adulte',v:this.COCKER.poids},
+        {k:'Taille au garrot',v:this.COCKER.taille},{k:'Entretien du poil',v:'Élevé'},
+      ],
+      psyAsk: !st.psyDone,
+
+      // ---- forms ----
+      morphoAsk: !st.morphoDone,
+      morphoFields:[
+        {k:'Taille au garrot',v:'≈ 39 cm'},{k:'Poids',v:'13 kg'},
+        {k:'Forme des oreilles',v:'Tombantes, longues'},{k:'Longueur du museau',v:'Moyen'},
+        {k:'Type de poil',v:'Mi-long, ondulé'},{k:'Couleur',v:'Fauve'},
+      ],
+      compatAsk: !st.compatDone,
+      compatFields:[
+        {k:'Logement',v:'Appartement'},{k:'Jardin',v:'Non'},{k:'Enfants',v:'Oui'},
+        {k:'Autres animaux',v:'Chat'},{k:'Temps disponible',v:'≈ 2 h / jour'},
+      ],
+      hpZones:['Oreilles','Yeux','Peau','Pelage'].map(z=>({label:z, sel:()=>this.setState({hpZone:z}),
+        bg:(st.hpZone||'Oreilles')===z?'#2A211B':'#fff', fg:(st.hpZone||'Oreilles')===z?'#F5EFE4':'#564B40', bd:(st.hpZone||'Oreilles')===z?'#2A211B':'#ECDFCB'})),
+      goFiche:()=>this.go('fiche'), goRecipes:()=>this.go('recipes'),
+
+      // ---- catalogue ----
+      scCatalogue: st.screen==='catalogue',
+      catGrid: st.catSel==null, catDetail: st.catSel!=null,
+      goCatalogue:()=>this.setState({screen:'catalogue',catSel:null,helpOpen:false}),
+      backToGrid:()=>this.setState({catSel:null}),
+      catList:this.BREEDS.map((b,i)=>({nom:b.nom, meta:b.groupe+' · '+b.origine, sel:()=>this.setState({catSel:i})})),
+      cbNom:(this.BREEDS[st.catSel==null?0:st.catSel]).nom,
+      cbTags:(this.BREEDS[st.catSel==null?0:st.catSel]).tags,
+      cbNote:(this.BREEDS[st.catSel==null?0:st.catSel]).note,
+      cbStats:(()=>{const b=this.BREEDS[st.catSel==null?0:st.catSel];return [{k:'Origine',v:b.origine},{k:'Groupe FCI',v:b.groupe},{k:'Taille',v:b.taille},{k:'Poids',v:b.poids},{k:'Espérance de vie',v:b.vie}];})(),
+      cbTraits:(this.BREEDS[st.catSel==null?0:st.catSel]).traits.map(t=>({label:t[0],val:t[1]})),
+
+      // ===== NEW FEATURES =====
+      // flags
+      scLifestyle:st.screen==='lifestyle', scAgehuman:st.screen==='agehuman', scWeight:st.screen==='weight',
+      scActivitylevel:st.screen==='activitylevel', scBarkprevent:st.screen==='barkprevent', scWeatherprog:st.screen==='weatherprog',
+      scBodylang:st.screen==='bodylang', scGenetics:st.screen==='genetics', scNutrition:st.screen==='nutrition',
+      scRecipes:st.screen==='recipes', scWorldmap:st.screen==='worldmap', scTimeline:st.screen==='timeline',
+      scPredictive:st.screen==='predictive', scPain:st.screen==='pain', scWalkroute:st.screen==='walkroute',
+      scBarkrecog:st.screen==='barkrecog', scMentalex:st.screen==='mentalex', scDogcompat:st.screen==='dogcompat',
+      scVetprep:st.screen==='vetprep', scWhydog:st.screen==='whydog', scTwin:st.screen==='twin',
+
+      // lifestyle
+      lifeAsk:!st.lifeDone, lifeDone:st.lifeDone,
+      runLife:()=>this.setState({lifeDone:true}), resetLife:()=>this.setState({lifeDone:false}),
+      lifeFields:this.NF.lifestyle.fields.map(f=>({k:f[0],v:f[1]})),
+      lifeResults:this.NF.lifestyle.results.map(r=>({name:r[0],pct:r[1],col:r[1]>=80?'#3F6B4E':(r[1]>=60?'#BC7A2C':'#B0543E')})),
+      lifeSummary:this.NF.lifestyle.summary,
+
+      // age human
+      ageBig:this.NF.agehuman.big, ageSub:this.NF.agehuman.sub, ageNote:this.NF.agehuman.note,
+      ageTable:this.NF.agehuman.table.map((r,i)=>({dog:r[0],human:r[1],bg:i===1?'#F4E8D5':'#FFFFFF'})),
+
+      // weight
+      wCur:this.NF.weight.current, wIdeal:this.NF.weight.ideal, wRange:this.NF.weight.range, wVerdict:this.NF.weight.verdict, wPct:this.NF.weight.pct,
+      wObjectifs:this.NF.weight.objectifs, wTip:this.NF.weight.tip,
+
+      // activity level
+      alLevel:this.NF.activitylevel.level, alIdx:this.NF.activitylevel.idx,
+      alScale:this.NF.activitylevel.scale.map((s,i)=>({label:s,col:i===1?'#2A211B':'#E9DBC6'})),
+      alStats:this.NF.activitylevel.stats.map(s=>({k:s[0],v:s[1]})), alRecos:this.NF.activitylevel.recos,
+
+      // bark prevent
+      bpTriggers:this.NF.barkprevent.triggers,
+      bpSteps:this.NF.barkprevent.steps.map((s,i)=>({n:i+1,t:s[0],b:s[1]})), bpAvoid:this.NF.barkprevent.avoid,
+
+      // weather programs
+      weatherTabs:Object.keys(this.NF.weather).map(k=>({label:k, icon:this.NF.weather[k].icon, sel:()=>this.setState({weatherTab:k}),
+        bg:st.weatherTab===k?'#2A211B':'#fff', fg:st.weatherTab===k?'#F5EFE4':'#564B40', bd:st.weatherTab===k?'#2A211B':'#ECDFCB'})),
+      weatherItems:this.NF.weather[st.weatherTab].items.map(i=>({title:i[0],desc:i[1],tag:i[2]})),
+
+      // body language
+      blIdle:st.bodyStage==='idle', blAnalyzing:st.bodyStage==='analyzing', blResult:st.bodyStage==='result',
+      startBl:()=>this.analyze('bodyStage'), resetBl:()=>this.setState({bodyStage:'idle'}),
+      blEmotion:this.NF.bodylang.emotion, blConf:this.NF.bodylang.conf, blEmoji:this.NF.bodylang.emoji,
+      blParts:this.NF.bodylang.parts.map(p=>({k:p[0],v:p[1]})), blDetect:this.NF.bodylang.detect,
+
+      // genetics
+      genBreeds:this.NF.genetics.breeds.map((b,i)=>({label:b, sel:()=>this.setState({genBreed:i}),
+        bg:st.genBreed===i?'#2A211B':'#fff', fg:st.genBreed===i?'#F5EFE4':'#564B40', bd:st.genBreed===i?'#2A211B':'#ECDFCB'})),
+      genSel:this.NF.genetics.breeds[st.genBreed],
+      genVig:this.NF.genetics.data[this.NF.genetics.breeds[st.genBreed]].vig,
+      genRisks:this.NF.genetics.data[this.NF.genetics.breeds[st.genBreed]].risks.map(r=>({name:r[0],lvl:r[1],col:r[1]==='Fréquent'?'#B0543E':(r[1]==='Modéré'?'#BC7A2C':'#4E7A45')})),
+      genTests:this.NF.genetics.data[this.NF.genetics.breeds[st.genBreed]].tests,
+
+      // nutrition
+      nutKcal:this.NF.nutrition.kcal, nutProt:this.NF.nutrition.prot, nutPortions:this.NF.nutrition.portions,
+      nutRows:this.NF.nutrition.rows.map(r=>({k:r[0],v:r[1]})), nutTip:this.NF.nutrition.tip,
+
+      // recipes
+      recipes:this.NF.recipes.map(r=>({nom:r.nom,kcal:r.kcal,tags:r.tags,desc:r.desc})),
+
+      // world map
+      worldCountries:this.NF.world.countries.map((c,i)=>({nom:c[0],flag:c[1],sel:()=>this.setState({countrySel:i})})),
+      worldHasSel:st.countrySel!=null, worldGrid:st.countrySel==null,
+      wcNom:st.countrySel!=null?this.NF.world.countries[st.countrySel][0]:'',
+      wcFlag:st.countrySel!=null?this.NF.world.countries[st.countrySel][1]:'',
+      wcRaces:st.countrySel!=null?this.NF.world.countries[st.countrySel][2]:[],
+      wcHist:st.countrySel!=null?this.NF.world.countries[st.countrySel][3]:'',
+      wcPop:st.countrySel!=null?this.NF.world.countries[st.countrySel][4]:'',
+      closeCountry:()=>this.setState({countrySel:null}),
+
+      // timeline
+      timelineItems:this.NF.timeline.map(t=>({when:t[0],type:t[1],desc:t[2],icon:t[3]})),
+
+      // predictive
+      predRisks:this.NF.predictive.risks.map(r=>({name:r[0],pct:r[1],tag:r[2],col:r[1]>=30?'#BC7A2C':'#4E7A45'})),
+      predFactors:this.NF.predictive.factors, predRecos:this.NF.predictive.recos,
+
+      // pain
+      painIdle:st.painStage==='idle', painAnalyzing:st.painStage==='analyzing', painResult:st.painStage==='result',
+      startPain:()=>this.analyze('painStage'), resetPain:()=>this.setState({painStage:'idle'}),
+      painSigns:this.NF.pain.signs.map(s=>({k:s[0],v:s[1],col:s[2]==='ok'?'#4E7A45':'#BC7A2C'})),
+      painVerdict:this.NF.pain.verdict, painAdvice:this.NF.pain.advice,
+
+      // walk route
+      walkDuree:this.NF.walk.duree, walkRythme:this.NF.walk.rythme, walkDist:this.NF.walk.dist, walkTerrain:this.NF.walk.terrain,
+      walkSegments:this.NF.walk.segments.map(s=>({t:s[0],d:s[1],icon:s[2]})), walkNote:this.NF.walk.note,
+
+      // bark recog
+      barkIdle:st.barkStage==='idle', barkListening:st.barkStage==='analyzing', barkResult:st.barkStage==='result',
+      startBark:()=>this.analyze('barkStage'), resetBark:()=>this.setState({barkStage:'idle'}),
+      barkRes:this.NF.bark.result, barkConf:this.NF.bark.conf, barkEmoji:this.NF.bark.emoji,
+      barkTypes:this.NF.bark.types.map(t=>({k:t[0],v:t[1]})), barkAdvice:this.NF.bark.advice,
+
+      // mental exercises
+      mexBreed:this.NF.mentalex.breed,
+      mexItems:this.NF.mentalex.items.map(i=>({title:i[0],desc:i[1],lvl:i[2],col:i[2]==='Facile'?'#4E7A45':(i[2]==='Moyen'?'#BC7A2C':'#B0543E')})),
+
+      // dog compatibility
+      dcAsk:!st.dogCompatDone, dcDone:st.dogCompatDone,
+      runDc:()=>this.setState({dogCompatDone:true}), resetDc:()=>this.setState({dogCompatDone:false}),
+      dcA:this.NF.dogcompat.a, dcB:this.NF.dogcompat.b,
+      dcProfile:this.NF.dogcompat.bProfile.map(p=>({k:p[0],v:p[1]})),
+      dcScore:this.NF.dogcompat.score, dcVerdict:this.NF.dogcompat.verdict, dcPoints:this.NF.dogcompat.points,
+
+      // vet prep
+      vetAsk:!st.vetDone, vetDoneF:st.vetDone,
+      vetSymptoms:this.NF.vet.symptoms.map(s=>{const checked=(st.vetSet||this.NF.vet.checked).indexOf(s)>=0;return {label:s,checked,
+        toggle:()=>this.setState(p=>{const cur=(p.vetSet||this.NF.vet.checked).slice();const i=cur.indexOf(s);return {vetSet:i>=0?cur.filter(x=>x!==s):cur.concat([s])};}),
+        bg:checked?'#2A211B':'#fff', fg:checked?'#F5EFE4':'#564B40', bd:checked?'#2A211B':'#ECDFCB', mark:checked?'✓':'+'};}),
+      runVet:()=>this.setState({vetDone:true}), resetVet:()=>this.setState({vetDone:false}),
+      vetReport:this.NF.vet.report.map(r=>({k:r[0],v:r[1]})),
+
+      // why dog
+      whyChips:this.NF.why.cases.map((c,i)=>({label:c.q, sel:()=>this.setState({whyActive:i}),
+        bg:st.whyActive===i?'#2A211B':'#fff', fg:st.whyActive===i?'#F5EFE4':'#564B40', bd:st.whyActive===i?'#2A211B':'#ECDFCB'})),
+      whyQ:this.NF.why.cases[st.whyActive].q, whyOrigin:this.NF.why.cases[st.whyActive].origin,
+      whyFreq:this.NF.why.cases[st.whyActive].freq, whyAlert:this.NF.why.cases[st.whyActive].alert,
+
+      // twin
+      twinNow:this.NF.twin.now.map(r=>({k:r[0],v:r[1]})),
+      twinProj:this.NF.twin.proj.map(r=>({k:r[0],v:r[1],note:r[2]})),
+      twinScenario:this.NF.twin.scenario,
+
+      // ===== SETTINGS =====
+      scSettings: st.screen==='settings',
+      orKey: st.orKey,
+      onKey:this.onKey, toggleShow:this.toggleShow, validateKey:this.validateKey,
+      orInputType: st.orShow ? 'text' : 'password',
+      orShowLabel: st.orShow ? 'Masquer' : 'Afficher',
+      orBtnLabel: st.orStatus==='checking' ? 'Vérification…' : (st.orStatus==='valid' ? 'Re-vérifier la clé' : 'Valider la clé'),
+      orHasMsg: !!st.orMsg,
+      orMsg: st.orMsg,
+      orMsgColor: st.orStatus==='valid' ? '#4E7A45' : (st.orStatus==='invalid' ? '#B0543E' : '#897A67'),
+      orMsgIcon: st.orStatus==='valid' ? '✓' : (st.orStatus==='invalid' ? '✕' : '…'),
+      orValid: st.orStatus==='valid',
+      orModelCount: this.FREE_MODELS.length,
+      orModelName: (this.FREE_MODELS.find(m=>m.id===st.orModel)||{}).name || 'aucun sélectionné',
+      freeModels: this.FREE_MODELS.map(m=>({ name:m.name, id:m.id, tag:m.tag, select:()=>this.selectModel(m.id),
+        border: st.orModel===m.id ? '#C2603C' : '#ECDFCB', dot: st.orModel===m.id ? '#C2603C' : '#D7C7AF', fill: st.orModel===m.id ? '#C2603C' : 'transparent' })),
+
+      // ---- identify ----
+      idUpload: st.idStage==='upload', idAnalyzing: st.idStage==='analyzing', idResult: st.idStage==='result',
+      startId:()=>this.analyze('idStage'), resetId:()=>this.setState({idStage:'upload'}),
+
+      // ---- morpho ----
+      morphoDone: st.morphoDone,
+      runMorpho:()=>this.setState({morphoDone:true}), resetMorpho:()=>this.setState({morphoDone:false}),
+      morphoResults:[{name:'Cocker Spaniel Anglais',pct:72},{name:'Springer Spaniel',pct:16},{name:'Cocker Américain',pct:8},{name:'Setter (croisé)',pct:4}],
+
+      // ---- compare ----
+      cmpA:this.COMPARE.a.nom, cmpB:this.COMPARE.b.nom, cmpATag:this.COMPARE.a.tag, cmpBTag:this.COMPARE.b.tag,
+      compareRows:this.COMPARE.rows.map(r=>({label:r[0],a:r[1],b:r[2]})),
+
+      // ---- fiche ----
+      cocker:this.COCKER,
+      cockerTraits:this.COCKER.traits.map(t=>({label:t[0],val:t[1]})),
+      cockerSante:this.COCKER.sante, cockerTags:this.COCKER.tags,
+
+      // ---- behavior ----
+      behaviorChips:this.BEHAVIOR.map((b,i)=>({label:b.case, sel:()=>this.setState({behaviorActive:i}),
+        bg: i===st.behaviorActive?'#2A211B':'#fff', fg: i===st.behaviorActive?'#F5EFE4':'#564B40', bd: i===st.behaviorActive?'#2A211B':'#ECDFCB'})),
+      behaviorExtra:['Agressivité','Destruction','Peur des inconnus'],
+      bCase:this.BEHAVIOR[st.behaviorActive].case, bCtx:this.BEHAVIOR[st.behaviorActive].ctx,
+      bCauses:this.BEHAVIOR[st.behaviorActive].causes, bExos:this.BEHAVIOR[st.behaviorActive].exos, bAvoid:this.BEHAVIOR[st.behaviorActive].avoid,
+
+      // ---- psy ----
+      psyDone: st.psyDone,
+      psyQ: (this.PSYQ[st.psyStep]||this.PSYQ[0]).q,
+      psyOpts: (this.PSYQ[st.psyStep]||this.PSYQ[0]).opts,
+      psyProg: Math.round(((st.psyStep)/(this.PSYQ.length))*100),
+      psyStepLabel: 'Question '+(st.psyStep+1)+' / '+this.PSYQ.length,
+      psyAnswer:()=>this.setState(s=> s.psyStep>=this.PSYQ.length-1 ? {psyDone:true} : {psyStep:s.psyStep+1}),
+      psyRestart:()=>this.setState({psyStep:0,psyDone:false}),
+      psyArch:this.PSYRESULT.archetype, psyBlurb:this.PSYRESULT.blurb,
+      psyDims:this.PSYRESULT.dims.map(d=>({k:d[0],v:d[1]})), psyRecos:this.PSYRESULT.recos,
+
+      // ---- compat ----
+      compatDone: st.compatDone,
+      runCompat:()=>this.setState({compatDone:true}), resetCompat:()=>this.setState({compatDone:false}),
+      compatList:this.COMPAT.map((c,i)=>({rank:i+1,name:c[0],score:c[1],reason:c[2]})),
+
+      // ---- pedigree ----
+      pedGp:[{name:'Ch. Rosewood Max',champ:true},{name:'Lily of Ashdown',champ:false},{name:'Ch. Bramble Jack',champ:true},{name:'Daisy Belle',champ:false}],
+      pedParents:[{name:'Hazel du Vallon',sex:'♀',champ:false},{name:'Ch. Oscar des Bruyères',sex:'♂',champ:true}],
+      pedCoi:'6,25 %', pedChamps:'3', pedDesc:'5 portées suivies',
+
+      // ---- carnet ----
+      vaccins:this.HEALTH.vaccins.map(v=>({name:v[0],status:v[1],detail:v[2],color:v[3]==='ok'?'#4E7A45':'#BC7A2C'})),
+      vermifuges:this.HEALTH.vermifuges.map(v=>({name:v[0],date:v[1],detail:v[2]})),
+      traitements:this.HEALTH.traitements.map(v=>({name:v[0],date:v[1],detail:v[2]})),
+      poidsBars:this.HEALTH.poids.map(p=>({m:p[0],kg:(p[1]+'').replace('.',','),h:Math.max(14,Math.round(((p[1]-12.4)/1.0)*100))})),
+      rdvList:this.HEALTH.rdv.map(r=>({date:r[0],motif:r[1],vet:r[2]})),
+
+      // ---- health photo ----
+      hpUpload: st.healthPhotoStage==='idle', hpAnalyzing: st.healthPhotoStage==='analyzing', hpResult: st.healthPhotoStage==='result',
+      startHp:()=>this.analyze('healthPhotoStage'), resetHp:()=>this.setState({healthPhotoStage:'idle'}),
+
+      // ---- translate ----
+      trIdle: st.translateStage==='idle', trAnalyzing: st.translateStage==='analyzing', trResult: st.translateStage==='result',
+      startTr:()=>this.analyze('translateStage'), resetTr:()=>this.setState({translateStage:'idle'}),
+      trSignals:[['Posture','Avant abaissé, arrière relevé'],['Queue','Remuée, large amplitude'],['Oreilles','Détendues, vers l\u2019avant'],['Expression','Gueule ouverte, \u201Csourire\u201D']].map(s=>({k:s[0],v:s[1]})),
+
+      // ---- coach ----
+      coachList:this.COACH.map(c=>({n:c.n,theme:c.theme,desc:c.desc,prog:c.prog,state:c.state,
+        sel:()=>this.setState({coachWeek:c.n}),
+        active:c.n===st.coachWeek,
+        col: c.prog===100?'#4E7A45':(c.prog>0?'#2A211B':'#D7C7AF')})),
+
+      // ---- activities ----
+      actToday:this.ACTIVITIES.today,
+      actList:this.ACTIVITIES.list.map(a=>({title:a[0],dur:a[1],desc:a[2],icon:a[3]})),
+
+      // ---- simulator ----
+      sim:this.SIM, simRows:this.SIM.rows.map(r=>({label:r[0],val:r[1],tag:r[2]})),
+    };
+  }
+}
+</script>
+</body>
+</html>

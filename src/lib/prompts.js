@@ -1,0 +1,41 @@
+// Prompt construction for Canidor's AI features. The dog profile is injected so
+// answers stay specific to Stanley (or the edited profile).
+
+export function systemPrompt(dog) {
+  return (
+    "Tu es l'assistant IA de Canidor, une application pour propriétaires de chiens. " +
+    `Le chien concerné : ${dog.nom}, ${dog.race}, ${dog.sexe}, ${dog.ageAnnees} ans, ${dog.poidsKg} kg. ` +
+    'Réponds toujours en français, de façon concise, structurée et bienveillante. ' +
+    "Utilise des listes courtes quand c'est utile. " +
+    "Rappelle, quand le sujet touche la santé, que ton analyse est indicative et ne remplace pas un vétérinaire. " +
+    "N'invente pas de certitudes médicales."
+  )
+}
+
+// Build a {system,user} pair into OpenRouter messages, with optional image.
+export function buildMessages({ dog, instruction, image }) {
+  const user = image
+    ? { role: 'user', content: [{ type: 'text', text: instruction }, { type: 'image_url', image_url: { url: image } }] }
+    : { role: 'user', content: instruction }
+  return [{ role: 'system', content: systemPrompt(dog) }, user]
+}
+
+// Per-screen instruction templates (kept short; UI already shows structured demo data).
+export const INSTRUCTIONS = {
+  identify: "À partir de cette photo, identifie la race la plus probable du chien, donne un pourcentage de confiance, d'éventuels croisements et le gabarit estimé.",
+  healthphoto: (zone) => `Observe cette photo de la zone « ${zone} » du chien. Décris les signes visibles éventuels (rougeur, inflammation, parasites), donne une recommandation prudente et précise quand consulter un vétérinaire.`,
+  translate: "Interprète le langage corporel du chien sur cette image/vidéo : émotion dominante, posture, queue, oreilles, expression. Donne un niveau de confiance.",
+  bodylang: (desc) => `Décode le langage corporel décrit ou montré : ${desc || 'scène fournie'}. Donne l'émotion probable et les signaux (oreilles, queue, regard, posture).`,
+  pain: "Analyse la posture/démarche du chien sur ce média. Repère d'éventuels signes de douleur ou d'inconfort et conseille prudemment, sans poser de diagnostic.",
+  barkrecog: "Classe le type d'aboiement probable (alerte, jeu, solitude, demande) et donne un court conseil adapté.",
+  behavior: (c) => `Mon chien présente ce comportement : « ${c} ». Donne les causes probables, des exercices conseillés et les erreurs à éviter.`,
+  whydog: (q) => `Pourquoi mon chien fait-il ceci : « ${q} » ? Explique l'origine comportementale, si c'est fréquent/normal, et le signe d'alerte éventuel.`,
+  barkprevent: (t) => `Donne une méthode pas à pas, positive et sans punition, pour réduire les aboiements déclenchés par : « ${t} ».`,
+  lifestyle: (fields) => `Voici mon mode de vie : ${fields}. Quelles races me conviennent le mieux et pourquoi ? Donne un court rapport.`,
+  compat: (fields) => `Mon mode de vie : ${fields}. Propose un top de races compatibles avec une justification courte chacune.`,
+  dogcompat: (a, b, prof) => `Estime la compatibilité entre ${a} et un autre chien (${b} : ${prof}). Donne un score, un verdict et des points d'attention.`,
+  vetprep: (sym) => `Prépare un résumé clair pour le vétérinaire à partir de ces symptômes observés : ${sym}. Structure : motif, symptômes, début, alimentation, comportement.`,
+  morpho: (fields) => `À partir de ces caractéristiques morphologiques : ${fields}, estime les races les plus probables avec un pourcentage.`,
+  nutrition: (dog) => `Donne des conseils nutritionnels pour ${dog.nom} (${dog.race}, ${dog.poidsKg} kg, ${dog.ageAnnees} ans) : besoins, répartition des repas, points de vigilance.`,
+  predictive: "Estime les principaux risques de santé à long terme pour ce chien et donne des conseils de prévention.",
+}

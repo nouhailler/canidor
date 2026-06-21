@@ -1,0 +1,80 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: #2a211b;
+  font-family: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+  color: #2a211b;
+  overscroll-behavior: none;
+}
+
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+input,
+button {
+  font-family: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+/* Animations from the prototype */
+@keyframes scanline {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(220px); }
+}
+@keyframes pulsered {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.9; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes sheetup {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes wag {
+  0%, 100% { transform: rotate(-9deg); }
+  50% { transform: rotate(9deg); }
+}
+@keyframes bar {
+  from { width: 0; }
+}
+@keyframes fadein {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Hover affordance on desktop: cards / options get an espresso border */
+@media (hover: hover) {
+  .hoverable:hover {
+    border-color: #2a211b !important;
+  }
+}
+
+button.reset {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
