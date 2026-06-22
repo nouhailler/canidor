@@ -1,11 +1,13 @@
 import { C, serif } from '../theme'
 import { useApp } from '../store/AppContext'
+import { useActivity } from '../store/ActivityContext'
 import { useChrome } from '../store/ChromeContext'
 import { Screen, Avatar, IconTile } from '../components/ui'
 import { HOME_ALERTS, HOME_QUICK } from '../data/tools'
 
 export default function Home() {
   const { dog } = useApp()
+  const { today, loading } = useActivity()
   const { goScreen } = useChrome()
   const sexSym = dog.sexe === 'Femelle' ? '♀' : '♂'
 
@@ -26,10 +28,10 @@ export default function Home() {
 
       {/* Activité du jour */}
       <div style={{ marginTop: 22, display: 'flex', alignItems: 'center', gap: 10, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 16, padding: '14px 16px' }}>
-        <IconTile size={34} radius={10} fontSize={16}>☀</IconTile>
+        <IconTile size={34} radius={10} fontSize={16}>{today.icon || '☀'}</IconTile>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: C.label, fontWeight: 600 }}>Activité du jour</div>
-          <div style={{ fontSize: 14, fontWeight: 500, marginTop: 2 }}>20 min de pistage olfactif</div>
+          <div style={{ fontSize: 14, fontWeight: 500, marginTop: 2 }}>{loading ? 'Génération en cours…' : `${today.duree} · ${today.titre}`}</div>
         </div>
         <button className="reset" onClick={() => goScreen('activities')} style={{ fontSize: 13, fontWeight: 600, color: C.espresso, borderBottom: `1.5px solid ${C.espresso}`, cursor: 'pointer', flex: 'none' }}>Voir</button>
       </div>

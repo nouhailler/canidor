@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { C, serif } from '../theme'
 import { Screen, Intro, SectionLabel, RegenButton, TipNote, BulletLine, IconTile } from '../components/ui'
-import { COACH, ACTIVITIES, NF } from '../data/datasets'
+import { COACH, NF } from '../data/datasets'
+import { useApp } from '../store/AppContext'
+import { useActivity } from '../store/ActivityContext'
 
 /* ---------------- Coach éducation ---------------- */
 export function Coach() {
@@ -43,33 +45,42 @@ export function Coach() {
 
 /* ---------------- Activités du jour (Générateur) ---------------- */
 export function Activities() {
-  const t = ACTIVITIES.today
+  const { dog } = useApp()
+  const { today: t, list, weather, source, loading, error, aiReady, regenerate } = useActivity()
   return (
     <Screen>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: C.sub }}><span style={{ fontSize: 15 }}>☁</span>{t.weather} · adapté au Cocker</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: C.sub }}><span style={{ fontSize: 15 }}>☁</span>{weather} · adapté à {dog.nom}</div>
       <div style={{ marginTop: 14, background: C.espresso, color: C.cream, borderRadius: 22, padding: 22 }}>
-        <div style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: C.faint, fontWeight: 600 }}>Recommandé aujourd'hui</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: C.faint, fontWeight: 600 }}>Recommandé aujourd'hui</div>
+          {source === 'ai' && <div style={{ fontSize: 9, letterSpacing: '.08em', textTransform: 'uppercase', color: C.accent, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: C.accent }} />IA</div>}
+        </div>
         <div style={{ fontFamily: serif, fontSize: 30, lineHeight: 1.1, marginTop: 10 }}>{t.titre}</div>
         <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
           <div style={{ fontSize: 12, fontWeight: 600, background: '#342817', borderRadius: 999, padding: '6px 12px' }}>⏱ {t.duree}</div>
-          <div style={{ fontSize: 12, fontWeight: 600, background: '#342817', borderRadius: 999, padding: '6px 12px' }}>👃 Flair</div>
+          <div style={{ fontSize: 12, fontWeight: 600, background: '#342817', borderRadius: 999, padding: '6px 12px' }}>{t.icon} {t.tag}</div>
         </div>
         <div style={{ fontSize: 13.5, color: C.grayA, lineHeight: 1.5, marginTop: 14 }}>{t.why}</div>
       </div>
       <SectionLabel style={{ marginTop: 24, marginBottom: 12 }}>Autres idées</SectionLabel>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {ACTIVITIES.list.map((a) => (
-          <div key={a[0]} style={{ display: 'flex', alignItems: 'center', gap: 14, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 16, padding: 14 }}>
-            <IconTile size={44} radius={13} fontSize={20}>{a[3]}</IconTile>
+        {list.map((a) => (
+          <div key={a.titre} style={{ display: 'flex', alignItems: 'center', gap: 14, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 16, padding: 14 }}>
+            <IconTile size={44} radius={13} fontSize={20}>{a.icon}</IconTile>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 15, fontWeight: 600 }}>{a[0]}</div>
-              <div style={{ fontSize: 12.5, color: C.label, marginTop: 2 }}>{a[2]}</div>
+              <div style={{ fontSize: 15, fontWeight: 600 }}>{a.titre}</div>
+              <div style={{ fontSize: 12.5, color: C.label, marginTop: 2 }}>{a.why}</div>
             </div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: C.sub, flex: 'none' }}>{a[1]}</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: C.sub, flex: 'none' }}>{a.duree}</div>
           </div>
         ))}
       </div>
-      <div style={{ marginTop: 18 }}><RegenButton>Générer d'autres activités</RegenButton></div>
+      {error && <div style={{ marginTop: 14, fontSize: 12.5, color: C.danger, lineHeight: 1.5 }}>⚠ {error} Idées proposées hors ligne.</div>}
+      <div style={{ marginTop: 18 }}>
+        <RegenButton onClick={loading ? undefined : regenerate}>
+          {loading ? 'Génération en cours…' : aiReady ? 'Générer avec l’IA' : "Générer d'autres activités"}
+        </RegenButton>
+      </div>
     </Screen>
   )
 }

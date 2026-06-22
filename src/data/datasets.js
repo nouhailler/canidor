@@ -215,15 +215,22 @@ export const COACH = [
   { n: 5, theme: 'Distractions', desc: 'Obéir en environnement stimulant', prog: 0, state: 'À venir' },
 ]
 
-export const ACTIVITIES = {
-  today: { titre: 'Pistage olfactif', duree: '20 min', why: 'Idéal pour le flair développé du Cocker, par temps couvert.', weather: 'Nuageux · 17°' },
-  list: [
-    ["Jeux d'intelligence", '15 min', 'Tapis de fouille & gobelets', '🧠'],
-    ['Exercice physique', '30 min', 'Rapport de balle au parc', '🎾'],
-    ['Recherche olfactive', '20 min', 'Cacher 5 friandises', '👃'],
-    ['Parcours maison', '15 min', 'Slalom entre coussins', '🏠'],
-  ],
-}
+// Pool of activities used by the "Activité du jour" generator. The daily pick is
+// derived deterministically from the date + dog (see useDailyActivity), so it
+// rotates day to day while staying stable through a single day. When an
+// OpenRouter key is configured the generator replaces these with AI suggestions.
+export const ACTIVITY_POOL = [
+  { titre: 'Pistage olfactif', duree: '20 min', tag: 'Flair', icon: '👃', why: 'Cachez 5 friandises dans le jardin ou la maison et laissez-le les retrouver. Le travail du nez est très fatigant mentalement.' },
+  { titre: "Jeux d'intelligence", duree: '15 min', tag: 'Mental', icon: '🧠', why: 'Tapis de fouille, gobelets retournés ou puzzle à friandises : de quoi muscler la réflexion sans effort physique intense.' },
+  { titre: 'Rapport au parc', duree: '30 min', tag: 'Physique', icon: '🎾', why: 'Une session de rapport de balle pour dépenser le trop-plein d’énergie et renforcer le rappel dans la foulée.' },
+  { titre: 'Parcours maison', duree: '15 min', tag: 'Agilité', icon: '🏠', why: 'Improvisez un slalom entre coussins et un tunnel sous une chaise : agilité douce, idéale par mauvais temps.' },
+  { titre: 'Marche reniflage', duree: '25 min', tag: 'Promenade', icon: '🌳', why: 'Une balade lente où il choisit le rythme et renifle à volonté : décompression et confiance.' },
+  { titre: 'Rappel ludique', duree: '15 min', tag: 'Éducation', icon: '🎯', why: 'Alternez les rappels à distance avec récompense et jeu. Courtes répétitions, beaucoup d’enthousiasme.' },
+  { titre: 'Mastication active', duree: '20 min', tag: 'Calme', icon: '🦴', why: 'Un os à mâcher adapté ou un Kong garni : la mastication libère du stress et apaise les chiens excités.' },
+  { titre: 'Apprentissage d’un tour', duree: '10 min', tag: 'Mental', icon: '✨', why: 'Apprenez « donne la patte » ou « tourne » en micro-séances. La nouveauté stimule et renforce le lien.' },
+  { titre: 'Bain de nature', duree: '40 min', tag: 'Exploration', icon: '🥾', why: 'Une sortie en forêt ou en sentier : terrains variés, nouvelles odeurs et dépense complète.' },
+  { titre: 'Cache-cache', duree: '15 min', tag: 'Flair', icon: '🔍', why: 'Cachez-vous dans la maison et appelez-le une fois : il vous cherche au flair, excellent pour le lien et le rappel.' },
+]
 
 export const SIM = {
   breed: 'Husky Sibérien',
