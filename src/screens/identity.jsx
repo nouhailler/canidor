@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
-import { C, serif } from '../theme'
+import { C, serif, mono } from '../theme'
 import { useChrome } from '../store/ChromeContext'
-import { Screen, Intro, SectionLabel, PrimaryButton, OutlineButton, UploadBox, PhotoPlaceholder, Tag, TraitRow, Bar, Chip, BulletLine, StatTile, TipNote, VetDisclaimer } from '../components/ui'
+import { useApp } from '../store/AppContext'
+import { Screen, Intro, SectionLabel, PrimaryButton, OutlineButton, UploadBox, PhotoPlaceholder, BreedPhoto, Tag, TraitRow, Bar, Chip, BulletLine, StatTile, TipNote, VetDisclaimer } from '../components/ui'
 import CaptureScreen from '../components/CaptureScreen'
 import { AIPanel } from '../components/ai'
-import { COCKER, BREEDS, COMPARE, NF, COMPAT_FIELDS, IDENTIFY_RESULT } from '../data/datasets'
+import { COMPARE, NF, COMPAT_FIELDS, IDENTIFY_RESULT } from '../data/datasets'
+import { useBreeds } from '../store/BreedsContext'
+import { IMPORT_TEMPLATE, normalizeBreed } from '../lib/breeds'
 import { MORPHO_OPTIONS, MORPHO_DEFAULTS, estimateBreeds } from '../lib/morpho'
 import { INSTRUCTIONS } from '../lib/prompts'
 
@@ -129,40 +132,65 @@ export function Compare() {
 }
 
 /* ---------------- Fiche de race ---------------- */
+const ficheSelectStyle = { width: '100%', border: `1px solid ${C.cardBorder}`, background: '#FAF4EA', borderRadius: 12, padding: '12px 14px', fontSize: 16, fontWeight: 600, fontFamily: serif, color: C.espresso, outline: 'none' }
+const entretienLabel = (traits) => {
+  const t = traits.find((x) => /entretien/i.test(x[0]))
+  if (!t) return null
+  return t[1] >= 75 ? 'Élevé' : t[1] >= 50 ? 'Modéré' : 'Faible'
+}
+
 export function Fiche() {
   const { goScreen } = useChrome()
+  const { dog } = useApp()
+  const { breeds } = useBreeds()
+  // Default to the user's own breed when it's in the catalogue, else the first.
+  const initial = Math.max(0, breeds.findIndex((b) => b.nom === dog.race))
+  const [sel, setSel] = useState(initial)
+  const b = breeds[Math.min(sel, breeds.length - 1)]
+  const entretien = entretienLabel(b.traits)
   const stats = [
-    { k: 'Origine', v: COCKER.origine }, { k: 'Groupe FCI', v: COCKER.groupe },
-    { k: 'Espérance de vie', v: COCKER.vie }, { k: 'Poids adulte', v: COCKER.poids },
-    { k: 'Taille au garrot', v: COCKER.taille }, { k: 'Entretien du poil', v: 'Élevé' },
+    { k: 'Origine', v: b.origine }, { k: 'Groupe FCI', v: b.groupe },
+    { k: 'Espérance de vie', v: b.vie }, { k: 'Poids adulte', v: b.poids },
+    { k: 'Taille au garrot', v: b.taille }, ...(entretien ? [{ k: 'Entretien du poil', v: entretien }] : []),
   ]
   return (
     <Screen flush>
       <div style={{ margin: '0 20px' }}>
-        <PhotoPlaceholder caption="photo · cocker spaniel" height={150} radius={20} />
+        <BreedPhoto src={b.image} caption={`photo · ${b.nom.toLowerCase()}`} height={150} radius={20} />
       </div>
       <div style={{ padding: '18px 20px 0' }}>
-        <div style={{ fontFamily: serif, fontSize: 30, lineHeight: 1 }}>{COCKER.nom}</div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-          {COCKER.tags.map((t) => <Tag key={t}>{t}</Tag>)}
-        </div>
+        <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: C.label, fontWeight: 600, marginBottom: 6 }}>Choisir une race ({breeds.length})</div>
+        <select style={ficheSelectStyle} value={Math.min(sel, breeds.length - 1)} onChange={(e) => setSel(Number(e.target.value))}>
+          {breeds.map((br, i) => <option key={br.id} value={i}>{br.nom}</option>)}
+        </select>
+        {!!b.tags.length && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
+            {b.tags.map((t) => <Tag key={t}>{t}</Tag>)}
+          </div>
+        )}
         <div style={{ marginTop: 20, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           {stats.map((s) => <StatTile key={s.k} k={s.k} v={s.v} />)}
         </div>
-        <SectionLabel style={{ marginTop: 24, marginBottom: 8 }}>Origine & histoire</SectionLabel>
-        <div style={{ fontSize: 14, lineHeight: 1.6, color: C.body }}>{COCKER.histoire}</div>
-        <SectionLabel style={{ marginTop: 24, marginBottom: 14 }}>Caractère & besoins</SectionLabel>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {COCKER.traits.map((t) => <TraitRow key={t[0]} label={t[0]} value={t[1]} />)}
-        </div>
-        <SectionLabel style={{ marginTop: 24, marginBottom: 12 }}>Problèmes de santé fréquents</SectionLabel>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {COCKER.sante.map((s) => (
-            <div key={s} style={{ display: 'flex', gap: 10, alignItems: 'center', background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 12, padding: '12px 14px', fontSize: 13.5 }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.danger, flex: 'none' }} />{s}
-            </div>
-          ))}
-        </div>
+        {!!b.histoire && (<>
+          <SectionLabel style={{ marginTop: 24, marginBottom: 8 }}>Origine & histoire</SectionLabel>
+          <div style={{ fontSize: 14, lineHeight: 1.6, color: C.body }}>{b.histoire}</div>
+        </>)}
+        {!!b.traits.length && (<>
+          <SectionLabel style={{ marginTop: 24, marginBottom: 14 }}>Caractère & besoins</SectionLabel>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {b.traits.map((t) => <TraitRow key={t[0]} label={t[0]} value={t[1]} />)}
+          </div>
+        </>)}
+        {!!b.sante.length && (<>
+          <SectionLabel style={{ marginTop: 24, marginBottom: 12 }}>Problèmes de santé fréquents</SectionLabel>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {b.sante.map((s) => (
+              <div key={s} style={{ display: 'flex', gap: 10, alignItems: 'center', background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 12, padding: '12px 14px', fontSize: 13.5 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.danger, flex: 'none' }} />{s}
+              </div>
+            ))}
+          </div>
+        </>)}
         <div style={{ marginTop: 18 }}><PrimaryButton onClick={() => goScreen('compare')}>Comparer à une autre race</PrimaryButton></div>
       </div>
     </Screen>
@@ -170,50 +198,231 @@ export function Fiche() {
 }
 
 /* ---------------- Catalogue des races (Liste/détail) ---------------- */
+const SOURCE_LABEL = { user: 'Ajout', ai: 'IA', import: 'Import', dogapi: 'The Dog API' }
+const catInput = { width: '100%', border: `1px solid ${C.cardBorder}`, background: '#FAF4EA', borderRadius: 12, padding: '11px 14px', fontSize: 14, color: C.espresso, outline: 'none' }
+
+function ToolBtn({ active, onClick, children }) {
+  return (
+    <button className="reset" onClick={onClick} style={{ fontSize: 12.5, fontWeight: 600, borderRadius: 999, padding: '9px 13px', cursor: 'pointer', whiteSpace: 'nowrap', background: active ? C.espresso : '#fff', color: active ? C.cream : C.body, border: `1px solid ${active ? C.espresso : C.cardBorder}`, boxShadow: active ? undefined : C.cardShadow }}>
+      {children}
+    </button>
+  )
+}
+
 export function Catalogue() {
-  const [sel, setSel] = useState(null)
   const { setDetail } = useChrome()
+  const { breeds, loading, error, setError, removeBreed, resetCatalogue, importJSON, generateAI, importDogApi, addedCount } = useBreeds()
+  const { aiReady } = useApp()
+  const [selId, setSelId] = useState(null)
+  const [q, setQ] = useState('')
+  const [group, setGroup] = useState('')
+  const [panel, setPanel] = useState('') // '' | 'add' | 'ai' | 'import'
+
+  const selected = breeds.find((b) => b.id === selId) || null
 
   useEffect(() => {
-    if (sel == null) { setDetail(null); return }
-    setDetail({ title: BREEDS[sel].nom, onBack: () => setSel(null) })
+    if (!selected) { setDetail(null); return }
+    setDetail({ title: selected.nom, onBack: () => setSelId(null) })
     return () => setDetail(null)
-  }, [sel, setDetail])
+  }, [selected, setDetail])
 
-  if (sel == null) {
+  const groups = [...new Set(breeds.map((b) => b.groupe).filter((g) => g && g !== '—'))].sort()
+  const needle = q.trim().toLowerCase()
+  const filtered = breeds.filter((b) => {
+    if (group && b.groupe !== group) return false
+    if (!needle) return true
     return (
-      <Screen>
-        <Intro>Toutes les races enregistrées dans l'application. Touchez une photo pour découvrir ses caractéristiques.</Intro>
-        <div style={{ marginTop: 18, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          {BREEDS.map((b, i) => (
-            <div key={b.nom} onClick={() => setSel(i)} style={{ cursor: 'pointer' }}>
-              <PhotoPlaceholder caption="photo" height={118} radius={16} align="bottom" style={{ background: 'repeating-linear-gradient(45deg,#ECDECA,#ECDECA 10px,#E1D1B7 10px,#E1D1B7 20px)' }} />
-              <div style={{ fontSize: 14, fontWeight: 600, marginTop: 9, lineHeight: 1.2 }}>{b.nom}</div>
-              <div style={{ fontSize: 11.5, color: C.label, marginTop: 2 }}>{`${b.groupe} · ${b.origine}`}</div>
-            </div>
-          ))}
+      b.nom.toLowerCase().includes(needle) ||
+      b.origine.toLowerCase().includes(needle) ||
+      b.tags.some((t) => t.toLowerCase().includes(needle))
+    )
+  })
+
+  const togglePanel = (p) => { setError(''); setPanel((cur) => (cur === p ? '' : p)) }
+  const openBreed = (id) => { setPanel(''); setSelId(id) }
+
+  /* -------- detail view -------- */
+  if (selected) {
+    const b = selected
+    const stats = [{ k: 'Origine', v: b.origine }, { k: 'Groupe FCI', v: b.groupe }, { k: 'Taille', v: b.taille }, { k: 'Poids', v: b.poids }, { k: 'Espérance de vie', v: b.vie }]
+    const removable = b.source !== 'base'
+    return (
+      <Screen flush style={{ animation: 'rise .3s ease' }}>
+        <div style={{ margin: '0 20px' }}>
+          <BreedPhoto src={b.image} caption={`photo · ${b.nom}`} height={170} radius={20} align="bottom" />
+        </div>
+        <div style={{ padding: '16px 20px 0' }}>
+          <button className="reset" onClick={() => setSelId(null)} style={{ fontSize: 13, color: C.sub, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 10 }}>‹ Toutes les races</button>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ fontFamily: serif, fontSize: 29, lineHeight: 1 }}>{b.nom}</div>
+            {b.source !== 'base' && <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.accent }}>{SOURCE_LABEL[b.source] || b.source}</span>}
+          </div>
+          {!!b.tags.length && <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>{b.tags.map((t) => <Tag key={t}>{t}</Tag>)}</div>}
+          <div style={{ marginTop: 20, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>{stats.map((s) => <StatTile key={s.k} k={s.k} v={s.v} />)}</div>
+          {!!b.histoire && (<>
+            <SectionLabel style={{ marginTop: 24, marginBottom: 8 }}>Origine & histoire</SectionLabel>
+            <div style={{ fontSize: 14, lineHeight: 1.6, color: C.body }}>{b.histoire}</div>
+          </>)}
+          {!!b.traits.length && (<>
+            <SectionLabel style={{ marginTop: 24, marginBottom: 14 }}>Caractère & besoins</SectionLabel>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>{b.traits.map((t) => <TraitRow key={t[0]} label={t[0]} value={t[1]} />)}</div>
+          </>)}
+          {!!b.note && <TipNote style={{ marginTop: 20 }}>{b.note}</TipNote>}
+          {removable && (
+            <button className="reset" onClick={() => { removeBreed(b.id); setSelId(null) }} style={{ marginTop: 18, width: '100%', textAlign: 'center', color: C.danger, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', border: `1px solid ${C.danger}`, borderRadius: 999, padding: 13 }}>
+              Supprimer cette race
+            </button>
+          )}
         </div>
       </Screen>
     )
   }
 
-  const b = BREEDS[sel]
-  const stats = [{ k: 'Origine', v: b.origine }, { k: 'Groupe FCI', v: b.groupe }, { k: 'Taille', v: b.taille }, { k: 'Poids', v: b.poids }, { k: 'Espérance de vie', v: b.vie }]
+  /* -------- list view -------- */
   return (
-    <Screen flush style={{ animation: 'rise .3s ease' }}>
-      <div style={{ margin: '0 20px' }}>
-        <PhotoPlaceholder caption={`photo · ${b.nom}`} height={170} radius={20} align="bottom" />
+    <Screen>
+      <Intro>Recherchez, filtrez, ajoutez ou importez des races. Touchez une carte pour sa fiche détaillée.</Intro>
+
+      <input style={{ ...catInput, marginTop: 16 }} placeholder="Rechercher (nom, origine, tempérament)…" value={q} onChange={(e) => setQ(e.target.value)} />
+
+      <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <ToolBtn active={panel === 'add'} onClick={() => togglePanel('add')}>＋ Ajouter</ToolBtn>
+        <ToolBtn active={panel === 'ai'} onClick={() => togglePanel('ai')}>✨ Générer (IA)</ToolBtn>
+        <ToolBtn active={panel === 'import'} onClick={() => togglePanel('import')}>⇪ Importer JSON</ToolBtn>
+        <ToolBtn active={loading === 'dogapi'} onClick={() => importDogApi()}>{loading === 'dogapi' ? '⏳ Import…' : '🌐 The Dog API'}</ToolBtn>
       </div>
-      <div style={{ padding: '16px 20px 0' }}>
-        <button className="reset" onClick={() => setSel(null)} style={{ fontSize: 13, color: C.sub, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 10 }}>‹ Toutes les races</button>
-        <div style={{ fontFamily: serif, fontSize: 29, lineHeight: 1 }}>{b.nom}</div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>{b.tags.map((t) => <Tag key={t}>{t}</Tag>)}</div>
-        <div style={{ marginTop: 20, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>{stats.map((s) => <StatTile key={s.k} k={s.k} v={s.v} />)}</div>
-        <SectionLabel style={{ marginTop: 24, marginBottom: 14 }}>Caractère & besoins</SectionLabel>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>{b.traits.map((t) => <TraitRow key={t[0]} label={t[0]} value={t[1]} />)}</div>
-        <TipNote style={{ marginTop: 20 }}>{b.note}</TipNote>
+
+      {panel === 'add' && <AddPanel onDone={(id) => { setPanel(''); openBreed(id) }} />}
+      {panel === 'ai' && <AIGenPanel aiReady={aiReady} loading={loading === 'ai'} onGenerate={generateAI} onDone={openBreed} />}
+      {panel === 'import' && <ImportPanel onImport={importJSON} />}
+
+      {error && <div style={{ marginTop: 12, fontSize: 12.5, color: C.danger, lineHeight: 1.5 }}>⚠ {error}</div>}
+
+      {groups.length > 1 && (
+        <div style={{ marginTop: 14, display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+          <Chip active={!group} onClick={() => setGroup('')}>Tous</Chip>
+          {groups.map((g) => <Chip key={g} active={group === g} onClick={() => setGroup(g)}>{g}</Chip>)}
+        </div>
+      )}
+
+      <div style={{ marginTop: 14, fontSize: 11.5, color: C.label }}>{filtered.length} race{filtered.length > 1 ? 's' : ''}{addedCount ? ` · ${addedCount} ajoutée${addedCount > 1 ? 's' : ''}` : ''}</div>
+
+      <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        {filtered.map((b) => (
+          <div key={b.id} onClick={() => openBreed(b.id)} style={{ cursor: 'pointer', position: 'relative' }}>
+            <BreedPhoto src={b.image} caption="photo" height={118} radius={16} align="bottom" style={b.image ? undefined : { background: 'repeating-linear-gradient(45deg,#ECDECA,#ECDECA 10px,#E1D1B7 10px,#E1D1B7 20px)' }} />
+            {b.source !== 'base' && <span style={{ position: 'absolute', top: 8, left: 8, fontSize: 9, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: C.cream, background: 'rgba(42,33,27,.78)', borderRadius: 999, padding: '3px 8px' }}>{SOURCE_LABEL[b.source] || b.source}</span>}
+            {b.source !== 'base' && (
+              <button className="reset" onClick={(e) => { e.stopPropagation(); removeBreed(b.id) }} style={{ position: 'absolute', top: 6, right: 6, width: 24, height: 24, borderRadius: '50%', background: 'rgba(42,33,27,.78)', color: C.cream, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>✕</button>
+            )}
+            <div style={{ fontSize: 14, fontWeight: 600, marginTop: 9, lineHeight: 1.2 }}>{b.nom}</div>
+            <div style={{ fontSize: 11.5, color: C.label, marginTop: 2 }}>{`${b.groupe} · ${b.origine}`}</div>
+          </div>
+        ))}
       </div>
+
+      {!filtered.length && <div style={{ marginTop: 20, fontSize: 13.5, color: C.label, textAlign: 'center' }}>Aucune race ne correspond.</div>}
+
+      {addedCount > 0 && (
+        <button className="reset" onClick={resetCatalogue} style={{ marginTop: 22, width: '100%', textAlign: 'center', color: C.label, fontSize: 13, cursor: 'pointer', textDecoration: 'underline' }}>
+          Réinitialiser le catalogue (retirer les ajouts)
+        </button>
+      )}
     </Screen>
+  )
+}
+
+/* -------- catalogue panels -------- */
+
+const catLabelStyle = { fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: C.label, fontWeight: 600, marginBottom: 4 }
+function CatField({ label, ph, value, onChange, grow }) {
+  return (
+    <label style={{ display: 'block', flex: grow ? 1 : undefined }}>
+      <div style={catLabelStyle}>{label}</div>
+      <input style={catInput} placeholder={ph} value={value} onChange={onChange} />
+    </label>
+  )
+}
+
+function AddPanel({ onDone }) {
+  const { addBreeds } = useBreeds()
+  const [f, setF] = useState({ nom: '', groupe: '', origine: '', taille: '', poids: '', vie: '', tags: '', histoire: '', sante: '', note: '' })
+  const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
+  const submit = () => {
+    if (!f.nom.trim()) return
+    const breed = normalizeBreed({
+      nom: f.nom, groupe: f.groupe, origine: f.origine, taille: f.taille, poids: f.poids, vie: f.vie,
+      tags: f.tags.split(',').map((t) => t.trim()).filter(Boolean),
+      sante: f.sante.split(',').map((t) => t.trim()).filter(Boolean),
+      histoire: f.histoire, note: f.note,
+    }, 'user')
+    addBreeds([breed])
+    onDone(breed.id)
+  }
+  return (
+    <div style={{ marginTop: 12, background: '#fff', border: `1px solid ${C.accent}`, boxShadow: C.cardShadow, borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', gap: 11 }}>
+      <CatField label="Nom *" ph="Akita Inu" value={f.nom} onChange={set('nom')} />
+      <div style={{ display: 'flex', gap: 10 }}><CatField grow label="Groupe FCI" ph="Groupe 5" value={f.groupe} onChange={set('groupe')} /><CatField grow label="Origine" ph="Japon" value={f.origine} onChange={set('origine')} /></div>
+      <div style={{ display: 'flex', gap: 10 }}><CatField grow label="Taille" ph="61–67 cm" value={f.taille} onChange={set('taille')} /><CatField grow label="Poids" ph="32–45 kg" value={f.poids} onChange={set('poids')} /><CatField grow label="Vie" ph="10–13 ans" value={f.vie} onChange={set('vie')} /></div>
+      <CatField label="Tags (séparés par ,)" ph="Loyal, Indépendant" value={f.tags} onChange={set('tags')} />
+      <CatField label="Santé (séparés par ,)" ph="Dysplasie, Hypothyroïdie" value={f.sante} onChange={set('sante')} />
+      <label style={{ display: 'block' }}>
+        <div style={catLabelStyle}>Histoire</div>
+        <textarea style={{ ...catInput, minHeight: 64, resize: 'vertical', fontFamily: 'inherit' }} value={f.histoire} onChange={set('histoire')} />
+      </label>
+      <PrimaryButton onClick={submit} style={{ padding: 13, fontSize: 14 }}>Ajouter la race</PrimaryButton>
+    </div>
+  )
+}
+
+function AIGenPanel({ aiReady, loading, onGenerate, onDone }) {
+  const [name, setName] = useState('')
+  const go = async () => {
+    if (!name.trim()) return
+    const res = await onGenerate(name.trim())
+    if (res && res.ok) { setName(''); onDone(res.breed.id) }
+  }
+  return (
+    <div style={{ marginTop: 12, background: '#fff', border: `1px solid ${C.accent}`, boxShadow: C.cardShadow, borderRadius: 16, padding: 16 }}>
+      {!aiReady && <div style={{ fontSize: 12.5, color: C.sub, lineHeight: 1.5, marginBottom: 10 }}>Connectez une clé OpenRouter dans <strong style={{ color: C.accent }}>Paramètres</strong> pour générer une fiche par IA.</div>}
+      <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: C.label, fontWeight: 600, marginBottom: 4 }}>Nom de la race à générer</div>
+      <input style={catInput} placeholder="Ex. Shiba Inu, Beauceron…" value={name} onChange={(e) => setName(e.target.value)} disabled={!aiReady || loading} />
+      <button className="reset" disabled={!aiReady || loading} onClick={go} style={{ marginTop: 12, width: '100%', background: C.accent, color: C.onAccent, borderRadius: 999, padding: 13, fontWeight: 600, fontSize: 14, cursor: aiReady && !loading ? 'pointer' : 'default', opacity: aiReady && !loading ? 1 : 0.6, minHeight: 46 }}>
+        {loading ? 'Génération en cours…' : '✨ Générer la fiche'}
+      </button>
+    </div>
+  )
+}
+
+function ImportPanel({ onImport }) {
+  const [text, setText] = useState('')
+  const [msg, setMsg] = useState('')
+  const run = (raw) => {
+    const res = onImport(raw)
+    if (!res.error) setMsg(`✓ ${res.count} race${res.count > 1 ? 's' : ''} importée${res.count > 1 ? 's' : ''}.`)
+    else setMsg('')
+  }
+  const onFile = (e) => {
+    const file = e.target.files && e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => run(String(reader.result || ''))
+    reader.readAsText(file)
+  }
+  return (
+    <div style={{ marginTop: 12, background: '#fff', border: `1px solid ${C.accent}`, boxShadow: C.cardShadow, borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ fontSize: 12.5, color: C.sub, lineHeight: 1.5 }}>Collez un JSON (objet ou tableau) au format de l’app, ou chargez un fichier <code>.json</code>.</div>
+      <textarea style={{ ...catInput, minHeight: 120, resize: 'vertical', fontFamily: mono, fontSize: 11.5 }} placeholder={IMPORT_TEMPLATE} value={text} onChange={(e) => setText(e.target.value)} />
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+        <PrimaryButton onClick={() => run(text)} style={{ width: 'auto', flex: 1, padding: 12, fontSize: 14 }}>Importer le texte</PrimaryButton>
+        <label className="reset" style={{ fontSize: 13, fontWeight: 600, color: C.accent, cursor: 'pointer', border: `1px solid ${C.cardBorder}`, borderRadius: 999, padding: '12px 16px' }}>
+          Fichier…
+          <input type="file" accept="application/json,.json" onChange={onFile} style={{ display: 'none' }} />
+        </label>
+      </div>
+      <button className="reset" onClick={() => setText(IMPORT_TEMPLATE)} style={{ fontSize: 12, color: C.label, cursor: 'pointer', textDecoration: 'underline', alignSelf: 'flex-start' }}>Insérer un exemple</button>
+      {msg && <div style={{ fontSize: 12.5, color: C.successDk, fontWeight: 600 }}>{msg}</div>}
+    </div>
   )
 }
 
