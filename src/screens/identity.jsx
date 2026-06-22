@@ -4,7 +4,8 @@ import { useChrome } from '../store/ChromeContext'
 import { Screen, Intro, SectionLabel, PrimaryButton, OutlineButton, UploadBox, PhotoPlaceholder, Tag, TraitRow, Bar, Chip, BulletLine, StatTile, TipNote, VetDisclaimer } from '../components/ui'
 import CaptureScreen from '../components/CaptureScreen'
 import { AIPanel } from '../components/ai'
-import { COCKER, BREEDS, COMPARE, NF, MORPHO_FIELDS, MORPHO_RESULTS, COMPAT_FIELDS, IDENTIFY_RESULT } from '../data/datasets'
+import { COCKER, BREEDS, COMPARE, NF, COMPAT_FIELDS, IDENTIFY_RESULT } from '../data/datasets'
+import { MORPHO_OPTIONS, MORPHO_DEFAULTS, estimateBreeds } from '../lib/morpho'
 import { INSTRUCTIONS } from '../lib/prompts'
 
 /* ---------------- Identification photo (Capture IA) ---------------- */
@@ -43,24 +44,30 @@ export function Identify() {
 }
 
 /* ---------------- Analyse morphologique (Rapport) ---------------- */
+const morphoSelectStyle = { width: '100%', border: `1px solid ${C.cardBorder}`, background: '#FAF4EA', borderRadius: 10, padding: '11px 12px', fontSize: 15, fontWeight: 600, color: C.espresso, outline: 'none', marginTop: 4 }
+
 export function Morpho() {
   const [done, setDone] = useState(false)
+  const [fields, setFields] = useState(MORPHO_DEFAULTS)
+  const [results, setResults] = useState([])
+  const set = (k) => (e) => setFields((s) => ({ ...s, [k]: e.target.value }))
+  const fieldsLine = MORPHO_OPTIONS.map((f) => `${f.k}: ${fields[f.k]}`).join(', ')
+
   if (!done) {
     return (
       <Screen>
         <Intro>Renseignez les caractéristiques observées. Plus elles sont précises, meilleure est l'estimation.</Intro>
         <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {MORPHO_FIELDS.map((f) => (
-            <div key={f.k} style={{ background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: C.label, fontWeight: 600 }}>{f.k}</div>
-                <div style={{ fontSize: 15, fontWeight: 600, marginTop: 3 }}>{f.v}</div>
-              </div>
-              <div style={{ color: C.grayA, fontSize: 18 }}>⌄</div>
-            </div>
+          {MORPHO_OPTIONS.map((f) => (
+            <label key={f.k} style={{ display: 'block', background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: '12px 14px' }}>
+              <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: C.label, fontWeight: 600 }}>{f.k}</div>
+              <select style={morphoSelectStyle} value={fields[f.k]} onChange={set(f.k)}>
+                {f.options.map((o) => <option key={o}>{o}</option>)}
+              </select>
+            </label>
           ))}
         </div>
-        <div style={{ marginTop: 18 }}><PrimaryButton onClick={() => setDone(true)}>Estimer la race</PrimaryButton></div>
+        <div style={{ marginTop: 18 }}><PrimaryButton onClick={() => { setResults(estimateBreeds(fields)); setDone(true) }}>Estimer la race</PrimaryButton></div>
       </Screen>
     )
   }
@@ -68,7 +75,7 @@ export function Morpho() {
     <Screen>
       <SectionLabel style={{ marginBottom: 14 }}>Races les plus probables</SectionLabel>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {MORPHO_RESULTS.map((r) => (
+        {results.map((r) => (
           <div key={r.name} style={{ background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 16, padding: '15px 16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <span style={{ fontSize: 15, fontWeight: 600 }}>{r.name}</span>
@@ -79,7 +86,7 @@ export function Morpho() {
         ))}
       </div>
       <div style={{ marginTop: 16 }}>
-        <AIPanel buildInstruction={() => INSTRUCTIONS.morpho(MORPHO_FIELDS.map((f) => `${f.k}: ${f.v}`).join(', '))} />
+        <AIPanel buildInstruction={() => INSTRUCTIONS.morpho(fieldsLine)} />
       </div>
       <div style={{ marginTop: 16 }}><OutlineButton onClick={() => setDone(false)}>Modifier les critères</OutlineButton></div>
     </Screen>

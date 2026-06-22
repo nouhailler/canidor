@@ -261,15 +261,8 @@ export const TRANSLATE_SIGNALS = [
 ]
 
 // Morpho fields + results (static)
-export const MORPHO_FIELDS = [
-  { k: 'Taille au garrot', v: '≈ 39 cm' }, { k: 'Poids', v: '13 kg' },
-  { k: 'Forme des oreilles', v: 'Tombantes, longues' }, { k: 'Longueur du museau', v: 'Moyen' },
-  { k: 'Type de poil', v: 'Mi-long, ondulé' }, { k: 'Couleur', v: 'Fauve' },
-]
-export const MORPHO_RESULTS = [
-  { name: 'Cocker Spaniel Anglais', pct: 72 }, { name: 'Springer Spaniel', pct: 16 },
-  { name: 'Cocker Américain', pct: 8 }, { name: 'Setter (croisé)', pct: 4 },
-]
+// Morpho criteria & estimator now live in src/lib/morpho.js (the analysis is
+// computed from the chosen criteria instead of being hardcoded).
 
 // Compat (lifestyle->races) input fields (static)
 export const COMPAT_FIELDS = [
