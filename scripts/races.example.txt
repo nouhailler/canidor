@@ -1,0 +1,14 @@
+# Liste de races à générer — une par ligne.
+# Lignes vides et lignes commençant par # ignorées.
+# Indice optionnel après « | » pour lever une ambiguïté (n° FCI, pays, nom EN).
+
+Akita Inu | FCI 255, Japon
+Berger Australien
+Épagneul Breton | Brittany Spaniel
+Shiba Inu
+Beauceron | Berger de Beauce
+Border Terrier
+Cane Corso | Italie
+Dogue Allemand | Great Dane
+Spitz Nain | Loulou de Poméranie
+Berger Belge Malinois
