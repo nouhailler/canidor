@@ -1,44 +1,127 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { C, serif, mono } from '../theme'
 import { Screen, Intro, SectionLabel, PrimaryButton, OutlineButton, Chip, BulletLine } from '../components/ui'
 import CaptureScreen from '../components/CaptureScreen'
 import { AIPanel, ConnectKeyNote, AIResultCard } from '../components/ai'
 import { useAnalysis } from '../hooks/useAnalysis'
+import { useApp } from '../store/AppContext'
+import { chatCompletion } from '../lib/openrouter'
+import { buildMessages } from '../lib/prompts'
 import { BEHAVIOR, PSYQ, PSYRESULT, NF, TRANSLATE_SIGNALS } from '../data/datasets'
 import { INSTRUCTIONS } from '../lib/prompts'
+import { loadCase, saveCase, parseCase } from '../lib/behaviorCache'
+
+const EXTRA_CASES = ['Agressivité', 'Destruction', 'Peur des inconnus']
 
 /* ---------------- Assistant comportement (Explainer) ---------------- */
 export function Behavior() {
   const [i, setI] = useState(0)
+  const [extra, setExtra] = useState(null) // cas dynamique sélectionné (ou null)
   const b = BEHAVIOR[i]
   return (
     <Screen>
       <Intro>Choisissez un cas ou décrivez le vôtre. L'IA analyse l'âge, la race et le contexte.</Intro>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
-        {BEHAVIOR.map((c, idx) => <Chip key={c.case} active={idx === i} onClick={() => setI(idx)}>{c.case}</Chip>)}
+        {BEHAVIOR.map((c, idx) => (
+          <Chip key={c.case} active={idx === i && !extra} onClick={() => { setI(idx); setExtra(null) }}>{c.case}</Chip>
+        ))}
       </div>
 
-      <div style={{ marginTop: 18, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 18, padding: 18 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: C.label }}>
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: C.successDk }} />Analyse IA · {b.ctx}
-        </div>
-        <div style={{ fontFamily: serif, fontSize: 24, marginTop: 8 }}>« {b.case} »</div>
-
-        <ExplainerBlock label="Causes probables" items={b.causes} variant="cause" />
-        <ExplainerBlock label="Exercices conseillés" items={b.exos} variant="do" />
-        <ExplainerBlock label="Erreurs à éviter" items={b.avoid} variant="avoid" />
-      </div>
+      <CaseCard title={b.case} ctx={b.ctx} causes={b.causes} exos={b.exos} avoid={b.avoid} />
 
       <SectionLabel style={{ marginTop: 16, marginBottom: 8 }}>Autres cas traités</SectionLabel>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {['Agressivité', 'Destruction', 'Peur des inconnus'].map((e) => <Chip key={e} dashed style={{ fontSize: 12, padding: '7px 12px' }}>{e}</Chip>)}
+        {EXTRA_CASES.map((e) => (
+          <Chip key={e} active={extra === e} dashed={extra !== e} style={{ fontSize: 12, padding: '7px 12px' }}
+            onClick={() => setExtra((prev) => (prev === e ? null : e))}>{e}</Chip>
+        ))}
       </div>
 
-      <div style={{ marginTop: 18 }}>
-        <AIPanel buildInstruction={() => INSTRUCTIONS.behavior(b.case)} label="Approfondir avec l'IA" />
-      </div>
+      {extra
+        ? <GeneratedCase name={extra} />
+        : (
+          <div style={{ marginTop: 18 }}>
+            <AIPanel buildInstruction={() => INSTRUCTIONS.behavior(b.case)} label="Approfondir avec l'IA" />
+          </div>
+        )}
       <InputBar placeholder="Décrire un autre problème…" />
     </Screen>
+  )
+}
+
+// Carte d'analyse partagée par les cas prédéfinis et les cas générés par l'IA.
+function CaseCard({ title, ctx, causes, exos, avoid }) {
+  return (
+    <div style={{ marginTop: 18, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 18, padding: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: C.label }}>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: C.successDk }} />Analyse IA{ctx ? ` · ${ctx}` : ''}
+      </div>
+      <div style={{ fontFamily: serif, fontSize: 24, marginTop: 8 }}>« {title} »</div>
+      <ExplainerBlock label="Causes probables" items={causes} variant="cause" />
+      <ExplainerBlock label="Exercices conseillés" items={exos} variant="do" />
+      <ExplainerBlock label="Erreurs à éviter" items={avoid} variant="avoid" />
+    </div>
+  )
+}
+
+// Cas dynamique : généré par l'IA puis mis en cache localement. Une fois
+// sauvegardé, il est réaffiché instantanément et propose une régénération.
+function GeneratedCase({ name }) {
+  const { aiReady, orKey, orModel, dog } = useApp()
+  const [data, setData] = useState(() => loadCase(name))
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  // Recharge depuis le cache quand on change de cas.
+  useEffect(() => { setData(loadCase(name)); setError(''); setLoading(false) }, [name])
+
+  const generate = async () => {
+    if (!aiReady || loading) return
+    setLoading(true)
+    setError('')
+    try {
+      const text = await chatCompletion({
+        key: orKey,
+        model: orModel,
+        messages: buildMessages({ dog, instruction: INSTRUCTIONS.behaviorJSON(name) }),
+      })
+      const parsed = parseCase(text)
+      saveCase(name, parsed)
+      setData(parsed)
+    } catch (e) {
+      setError(e.message || 'Échec de la génération.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!aiReady) return <div style={{ marginTop: 18 }}><ConnectKeyNote /></div>
+
+  return (
+    <div style={{ marginTop: 18 }}>
+      {data && <CaseCard title={name} ctx={data.ctx} causes={data.causes} exos={data.exos} avoid={data.avoid} />}
+      {error && <div style={{ marginTop: 12, fontSize: 13, color: C.danger, lineHeight: 1.5 }}>⚠ {error}</div>}
+      {data && (
+        <div style={{ marginTop: 10, fontSize: 11.5, color: C.label, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ color: C.successDk }}>✓</span>Sauvegardé localement — pas de nouvel appel à la sélection.
+        </div>
+      )}
+      <div style={{ marginTop: 12 }}>
+        <button
+          className="reset"
+          disabled={loading}
+          onClick={generate}
+          style={{ width: '100%', border: `1px solid ${C.grayB}`, borderRadius: 999, padding: 14, textAlign: 'center', fontWeight: 600, fontSize: 15, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.6 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 48 }}
+        >
+          {loading ? (
+            <>
+              <span style={{ width: 16, height: 16, border: '2px solid #C9B89B', borderTopColor: C.espresso, borderRadius: '50%', display: 'inline-block', animation: 'spin .8s linear infinite' }} />
+              Analyse en cours…
+            </>
+          ) : data ? '↻ Régénérer' : `✨ Générer l'analyse de « ${name} »`}
+        </button>
+      </div>
+    </div>
   )
 }
 

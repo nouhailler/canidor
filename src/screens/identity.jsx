@@ -10,6 +10,7 @@ import { useBreeds } from '../store/BreedsContext'
 import { IMPORT_TEMPLATE, normalizeBreed } from '../lib/breeds'
 import { MORPHO_OPTIONS, MORPHO_DEFAULTS, estimateBreeds } from '../lib/morpho'
 import { INSTRUCTIONS } from '../lib/prompts'
+import { fetchWikimediaImage, openGoogleImages, pickImageFile } from '../lib/breedImage'
 
 /* ---------------- Identification photo (Capture IA) ---------------- */
 export function Identify() {
@@ -248,10 +249,11 @@ export function Catalogue() {
     const removable = b.source !== 'base'
     return (
       <Screen flush style={{ animation: 'rise .3s ease' }}>
-        <div style={{ margin: '0 20px' }}>
+        <div style={{ margin: '0 20px', position: 'relative' }}>
           <BreedPhoto src={b.image} caption={`photo · ${b.nom}`} height={170} radius={20} align="bottom" />
         </div>
         <div style={{ padding: '16px 20px 0' }}>
+          <PhotoEditor breed={b} />
           <button className="reset" onClick={() => setSelId(null)} style={{ fontSize: 13, color: C.sub, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 10 }}>‹ Toutes les races</button>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
             <div style={{ fontFamily: serif, fontSize: 29, lineHeight: 1 }}>{b.nom}</div>
@@ -422,6 +424,67 @@ function ImportPanel({ onImport }) {
       </div>
       <button className="reset" onClick={() => setText(IMPORT_TEMPLATE)} style={{ fontSize: 12, color: C.label, cursor: 'pointer', textDecoration: 'underline', alignSelf: 'flex-start' }}>Insérer un exemple</button>
       {msg && <div style={{ fontSize: 12.5, color: C.successDk, fontWeight: 600 }}>{msg}</div>}
+    </div>
+  )
+}
+
+/* -------- éditeur de photo de race (Wikimédia · Google Images · fichier · URL) -------- */
+function PhotoEditor({ breed }) {
+  const { setBreedImage } = useBreeds()
+  const [open, setOpen] = useState(false)
+  const [url, setUrl] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+
+  const apply = (img) => { setBreedImage(breed, img); setUrl(''); setErr(''); setOpen(false) }
+
+  const fromFile = () => { setErr(''); pickImageFile((data) => apply(data), (e) => setErr(e)) }
+
+  const fromWikimedia = async () => {
+    setBusy(true); setErr('')
+    try { apply(await fetchWikimediaImage(breed.nom)) }
+    catch (e) { setErr(e.message || 'Échec Wikimédia.') }
+    finally { setBusy(false) }
+  }
+
+  const pillBtn = { fontSize: 13, fontWeight: 600, borderRadius: 999, padding: '10px 14px', cursor: 'pointer', background: '#fff', color: C.body, border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow }
+
+  if (!open) {
+    return (
+      <button className="reset" onClick={() => { setErr(''); setOpen(true) }}
+        style={{ ...pillBtn, display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+        ✎ {breed.image ? 'Changer la photo' : 'Ajouter une photo'}
+      </button>
+    )
+  }
+
+  return (
+    <div style={{ background: '#fff', border: `1px solid ${C.accent}`, boxShadow: C.cardShadow, borderRadius: 16, padding: 16, marginBottom: 6, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: C.label, fontWeight: 600 }}>Photo de « {breed.nom} »</div>
+
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button className="reset" disabled={busy} onClick={fromWikimedia} style={{ ...pillBtn, opacity: busy ? 0.6 : 1 }}>{busy ? '⏳ Recherche…' : '🔎 Wikimédia'}</button>
+        <button className="reset" onClick={() => openGoogleImages(breed.nom)} style={pillBtn}>🌐 Google Images</button>
+        <button className="reset" onClick={fromFile} style={pillBtn}>📁 Importer un fichier</button>
+      </div>
+
+      <div>
+        <div style={catLabelStyle}>Coller une URL d’image</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input style={{ ...catInput, flex: 1 }} placeholder="https://…/photo.jpg" value={url} onChange={(e) => setUrl(e.target.value)} />
+          <button className="reset" disabled={!url.trim()} onClick={() => apply(url.trim())} style={{ ...pillBtn, background: C.accent, color: C.onAccent, border: 'none', opacity: url.trim() ? 1 : 0.5 }}>Appliquer</button>
+        </div>
+        <div style={{ fontSize: 11.5, color: C.label, marginTop: 6, lineHeight: 1.45 }}>
+          Google Images s’ouvre dans un onglet : faites un clic droit sur une image → « Copier l’adresse de l’image », puis collez-la ici.
+        </div>
+      </div>
+
+      {err && <div style={{ fontSize: 12.5, color: C.danger, lineHeight: 1.5 }}>⚠ {err}</div>}
+
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        {breed.image && <button className="reset" onClick={() => apply('')} style={{ fontSize: 13, fontWeight: 600, color: C.danger, cursor: 'pointer' }}>Retirer la photo</button>}
+        <button className="reset" onClick={() => { setOpen(false); setErr('') }} style={{ fontSize: 13, color: C.label, cursor: 'pointer', marginLeft: 'auto' }}>Fermer</button>
+      </div>
     </div>
   )
 }

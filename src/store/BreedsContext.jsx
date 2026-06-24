@@ -61,6 +61,13 @@ export function BreedsProvider({ children }) {
     })
   }, [])
 
+  // Met à jour l'image d'une race (override par nom, persisté localement).
+  // Fonctionne aussi pour les races de base : un override est créé sans les
+  // rendre supprimables (la source d'origine est conservée).
+  const setBreedImage = useCallback((breed, image) => {
+    addBreeds([{ ...breed, image: image || '' }])
+  }, [addBreeds])
+
   const removeBreed = useCallback((id) => {
     setAdded((prev) => {
       const next = prev.filter((b) => b.id !== id)
@@ -120,8 +127,8 @@ export function BreedsProvider({ children }) {
   }, [addBreeds])
 
   const value = useMemo(
-    () => ({ breeds, loading, error, setError, addBreeds, removeBreed, resetCatalogue, importJSON, generateAI, importDogApi, addedCount: added.length }),
-    [breeds, loading, error, addBreeds, removeBreed, resetCatalogue, importJSON, generateAI, importDogApi, added.length],
+    () => ({ breeds, loading, error, setError, addBreeds, setBreedImage, removeBreed, resetCatalogue, importJSON, generateAI, importDogApi, addedCount: added.length }),
+    [breeds, loading, error, addBreeds, setBreedImage, removeBreed, resetCatalogue, importJSON, generateAI, importDogApi, added.length],
   )
   return <BreedsContext.Provider value={value}>{children}</BreedsContext.Provider>
 }

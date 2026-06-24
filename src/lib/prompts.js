@@ -29,6 +29,7 @@ export const INSTRUCTIONS = {
   pain: "Analyse la posture/démarche du chien sur ce média. Repère d'éventuels signes de douleur ou d'inconfort et conseille prudemment, sans poser de diagnostic.",
   barkrecog: "Classe le type d'aboiement probable (alerte, jeu, solitude, demande) et donne un court conseil adapté.",
   behavior: (c) => `Mon chien présente ce comportement : « ${c} ». Donne les causes probables, des exercices conseillés et les erreurs à éviter.`,
+  behaviorJSON: (c) => `Mon chien présente ce comportement : « ${c} ». Réponds UNIQUEMENT par un objet JSON valide, sans texte ni balises autour, au format exact : {"ctx":"contexte court (âge/situation typique)","causes":["3 causes probables"],"exos":["3 exercices conseillés"],"avoid":["3 erreurs à éviter"]}. Réponds en français, en phrases courtes.`,
   whydog: (q) => `Pourquoi mon chien fait-il ceci : « ${q} » ? Explique l'origine comportementale, si c'est fréquent/normal, et le signe d'alerte éventuel.`,
   barkprevent: (t) => `Donne une méthode pas à pas, positive et sans punition, pour réduire les aboiements déclenchés par : « ${t} ».`,
   lifestyle: (fields) => `Voici mon mode de vie : ${fields}. Quelles races me conviennent le mieux et pourquoi ? Donne un court rapport.`,
