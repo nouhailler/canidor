@@ -120,10 +120,11 @@ export function IconTile({ children, tint = C.tile, size = 38, radius = 11, font
 }
 
 // Avatar du chien : photo (src) si disponible, sinon initiale sur fond rayé.
-export function Avatar({ size = 58, radius = 16, fontSize = 26, letter = 'B', src }) {
+// pos ("x% y%") et zoom (>=1) reprennent le cadrage défini sur le profil.
+export function Avatar({ size = 58, radius = 16, fontSize = 26, letter = 'B', src, pos = '50% 50%', zoom = 1 }) {
   return (
     <div style={{ width: size, height: size, borderRadius: radius, flex: 'none', overflow: 'hidden', background: 'repeating-linear-gradient(45deg,#3A2C20,#3A2C20 7px,#2F2316 7px,#2F2316 14px)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: serif, fontSize, color: C.faint }}>
-      {src ? <img src={src} alt={letter} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : letter}
+      {src ? <img src={src} alt={letter} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: pos, transform: zoom > 1 ? `scale(${zoom})` : undefined, transformOrigin: pos, display: 'block' }} /> : letter}
     </div>
   )
 }

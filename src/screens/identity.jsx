@@ -4,13 +4,17 @@ import { useChrome } from '../store/ChromeContext'
 import { useApp } from '../store/AppContext'
 import { Screen, Intro, SectionLabel, PrimaryButton, OutlineButton, UploadBox, PhotoPlaceholder, BreedPhoto, Tag, TraitRow, Bar, Chip, BulletLine, StatTile, TipNote, VetDisclaimer } from '../components/ui'
 import CaptureScreen from '../components/CaptureScreen'
-import { AIPanel } from '../components/ai'
-import { COMPARE, NF, COMPAT_FIELDS, IDENTIFY_RESULT } from '../data/datasets'
+import { AIPanel, AIResultCard, ConnectKeyNote } from '../components/ai'
+import { chatCompletion } from '../lib/openrouter'
+import { loadInfo as loadBreedInfo, saveInfo as saveBreedInfo, removeInfo as removeBreedInfo } from '../lib/breedInfoCache'
+import { loadInfo as loadHealthInfo, saveInfo as saveHealthInfo, removeInfo as removeHealthInfo } from '../lib/healthInfoCache'
+import { NF, COMPAT_FIELDS, IDENTIFY_RESULT } from '../data/datasets'
 import { useBreeds } from '../store/BreedsContext'
 import { IMPORT_TEMPLATE, normalizeBreed } from '../lib/breeds'
 import { MORPHO_OPTIONS, MORPHO_DEFAULTS, estimateBreeds } from '../lib/morpho'
-import { INSTRUCTIONS } from '../lib/prompts'
+import { INSTRUCTIONS, buildMessages } from '../lib/prompts'
 import { fetchWikimediaImage, openGoogleImages, pickImageFile } from '../lib/breedImage'
+import { loadHistory as loadMorphoHistory, addEntry as addMorphoEntry, removeEntry as removeMorphoEntry } from '../lib/morphoHistory'
 
 /* ---------------- Identification photo (Capture IA) ---------------- */
 export function Identify() {
@@ -54,8 +58,14 @@ export function Morpho() {
   const [done, setDone] = useState(false)
   const [fields, setFields] = useState(MORPHO_DEFAULTS)
   const [results, setResults] = useState([])
+  const [history, setHistory] = useState(loadMorphoHistory)
+  const [saved, setSaved] = useState(false)
   const set = (k) => (e) => setFields((s) => ({ ...s, [k]: e.target.value }))
   const fieldsLine = MORPHO_OPTIONS.map((f) => `${f.k}: ${fields[f.k]}`).join(', ')
+
+  const estimate = () => { setResults(estimateBreeds(fields)); setSaved(false); setDone(true) }
+  const save = () => { setHistory(addMorphoEntry(history, { fields, results })); setSaved(true) }
+  const reopen = (h) => { setFields({ ...MORPHO_DEFAULTS, ...h.fields }); setResults(h.results); setSaved(true); setDone(true) }
 
   if (!done) {
     return (
@@ -71,13 +81,24 @@ export function Morpho() {
             </label>
           ))}
         </div>
-        <div style={{ marginTop: 18 }}><PrimaryButton onClick={() => { setResults(estimateBreeds(fields)); setDone(true) }}>Estimer la race</PrimaryButton></div>
+        <div style={{ marginTop: 18 }}><PrimaryButton onClick={estimate}>Estimer la race</PrimaryButton></div>
+        <MorphoHistory history={history} onOpen={reopen} onRemove={(id) => setHistory(removeMorphoEntry(history, id))} />
       </Screen>
     )
   }
   return (
     <Screen>
-      <SectionLabel style={{ marginBottom: 14 }}>Races les plus probables</SectionLabel>
+      {/* Rappel des caractéristiques observées pour cette estimation */}
+      <div style={{ background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 16, padding: '14px 16px' }}>
+        <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: C.label, fontWeight: 600, marginBottom: 8 }}>Caractéristiques observées</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {MORPHO_OPTIONS.map((f) => (
+            <span key={f.k} style={{ fontSize: 12, color: C.body, background: C.tile, borderRadius: 999, padding: '5px 10px' }}>{f.k} : <b style={{ fontWeight: 600 }}>{fields[f.k]}</b></span>
+          ))}
+        </div>
+      </div>
+
+      <SectionLabel style={{ marginTop: 22, marginBottom: 14 }}>Races les plus probables</SectionLabel>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {results.map((r) => (
           <div key={r.name} style={{ background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 16, padding: '15px 16px' }}>
@@ -89,6 +110,13 @@ export function Morpho() {
           </div>
         ))}
       </div>
+
+      <div style={{ marginTop: 16 }}>
+        <PrimaryButton onClick={saved ? undefined : save} style={saved ? { background: C.tile, color: C.sub, cursor: 'default' } : undefined}>
+          {saved ? '✓ Recherche enregistrée' : '💾 Enregistrer cette recherche'}
+        </PrimaryButton>
+      </div>
+
       <div style={{ marginTop: 16 }}>
         <AIPanel buildInstruction={() => INSTRUCTIONS.morpho(fieldsLine)} />
       </div>
@@ -97,36 +125,97 @@ export function Morpho() {
   )
 }
 
-/* ---------------- Comparateur (Calcul/Info double bars) ---------------- */
+// Historique des analyses morphologiques : rappelle les caractéristiques
+// observées et la race la plus probable ; clic pour rouvrir la recherche.
+function MorphoHistory({ history, onOpen, onRemove }) {
+  if (!history.length) return null
+  const fmt = (iso) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
+  return (
+    <>
+      <SectionLabel style={{ marginTop: 26, marginBottom: 12 }}>Historique des recherches</SectionLabel>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {history.map((h) => {
+          const top = h.results[0]
+          const summary = MORPHO_OPTIONS.map((f) => h.fields[f.k]).filter(Boolean).join(' · ')
+          return (
+            <div key={h.id} style={{ background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: '13px 14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div onClick={() => onOpen(h)} style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontSize: 14.5, fontWeight: 600 }}>{top ? top.name : 'Sans résultat'}</span>
+                    {top && <span style={{ fontFamily: serif, fontSize: 15, color: C.sub }}>{top.pct}%</span>}
+                  </div>
+                  <div style={{ fontSize: 11, color: C.label, marginTop: 1 }}>{fmt(h.date)}</div>
+                </div>
+                <button className="reset" onClick={() => onRemove(h.id)} style={{ flex: 'none', fontSize: 16, color: C.grayA, cursor: 'pointer', padding: 4 }}>✕</button>
+              </div>
+              <div style={{ fontSize: 11.5, color: C.sub, marginTop: 8, lineHeight: 1.45 }}>{summary}</div>
+            </div>
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
+/* ---------------- Comparateur (dynamique, deux races au choix) ---------------- */
+const compareSelectStyle = { width: '100%', border: 'none', background: 'transparent', fontSize: 15, fontWeight: 600, color: 'inherit', outline: 'none', cursor: 'pointer', textAlign: 'center', textAlignLast: 'center' }
+
 export function Compare() {
+  const { dog } = useApp()
+  const { breeds } = useBreeds()
+  // Par défaut : A = race du chien (si présente), B = une autre race.
+  const idxOf = (name, fb) => { const i = breeds.findIndex((b) => b.nom === name); return i >= 0 ? i : fb }
+  const [aSel, setASel] = useState(() => idxOf(dog.race, 0))
+  const [bSel, setBSel] = useState(() => { const a = idxOf(dog.race, 0); return a === 0 ? Math.min(1, breeds.length - 1) : 0 })
+
+  const a = breeds[Math.min(aSel, breeds.length - 1)]
+  const b = breeds[Math.min(bSel, breeds.length - 1)]
+
+  // Lignes de comparaison : traits de A, complétés par ceux propres à B.
+  const ma = Object.fromEntries(a.traits.map((t) => [t[0], t[1]]))
+  const mb = Object.fromEntries(b.traits.map((t) => [t[0], t[1]]))
+  const labels = [...a.traits.map((t) => t[0]), ...b.traits.map((t) => t[0]).filter((l) => !(l in ma))]
+  const rows = labels.map((l) => [l, ma[l] ?? 0, mb[l] ?? 0])
+
   return (
     <Screen>
       <div style={{ display: 'flex', gap: 10 }}>
         <div style={{ flex: 1, background: C.espresso, color: C.cream, borderRadius: 16, padding: 14, textAlign: 'center' }}>
-          <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: C.faint }}>{COMPARE.a.tag}</div>
-          <div style={{ fontSize: 15, fontWeight: 600, marginTop: 4, lineHeight: 1.15 }}>{COMPARE.a.nom}</div>
+          <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: C.faint }}>Race A</div>
+          <select style={{ ...compareSelectStyle, marginTop: 4 }} value={Math.min(aSel, breeds.length - 1)} onChange={(e) => setASel(Number(e.target.value))}>
+            {breeds.map((br, i) => <option key={br.id} value={i}>{br.nom}</option>)}
+          </select>
         </div>
-        <div style={{ flex: 1, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 16, padding: 14, textAlign: 'center' }}>
-          <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: C.label }}>{COMPARE.b.tag}</div>
-          <div style={{ fontSize: 15, fontWeight: 600, marginTop: 4, lineHeight: 1.15 }}>{COMPARE.b.nom}</div>
+        <div style={{ flex: 1, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 16, padding: 14, textAlign: 'center', color: C.body }}>
+          <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: C.label }}>Race B</div>
+          <select style={{ ...compareSelectStyle, marginTop: 4 }} value={Math.min(bSel, breeds.length - 1)} onChange={(e) => setBSel(Number(e.target.value))}>
+            {breeds.map((br, i) => <option key={br.id} value={i}>{br.nom}</option>)}
+          </select>
         </div>
       </div>
-      <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 18 }}>
-        {COMPARE.rows.map((row) => (
-          <div key={row[0]}>
-            <div style={{ fontSize: 13, fontWeight: 600, textAlign: 'center', marginBottom: 8 }}>{row[0]}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 11, color: C.sub, width: 26, textAlign: 'right', flex: 'none' }}>{row[1]}</span>
-              <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', background: '#F1EEE8', borderRadius: 4, height: 9, overflow: 'hidden' }}><div style={{ height: '100%', background: C.espresso, borderRadius: 4, width: `${row[1]}%` }} /></div>
-              <div style={{ flex: 1, background: '#F1EEE8', borderRadius: 4, height: 9, overflow: 'hidden' }}><div style={{ height: '100%', background: C.grayC, borderRadius: 4, width: `${row[2]}%` }} /></div>
-              <span style={{ fontSize: 11, color: C.sub, width: 26, flex: 'none' }}>{row[2]}</span>
+
+      {rows.length ? (
+        <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {rows.map((row) => (
+            <div key={row[0]}>
+              <div style={{ fontSize: 13, fontWeight: 600, textAlign: 'center', marginBottom: 8 }}>{row[0]}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 11, color: C.sub, width: 26, textAlign: 'right', flex: 'none' }}>{row[1]}</span>
+                <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', background: '#F1EEE8', borderRadius: 4, height: 9, overflow: 'hidden' }}><div style={{ height: '100%', background: C.espresso, borderRadius: 4, width: `${row[1]}%` }} /></div>
+                <div style={{ flex: 1, background: '#F1EEE8', borderRadius: 4, height: 9, overflow: 'hidden' }}><div style={{ height: '100%', background: C.grayC, borderRadius: 4, width: `${row[2]}%` }} /></div>
+                <span style={{ fontSize: 11, color: C.sub, width: 26, flex: 'none' }}>{row[2]}</span>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ marginTop: 22, fontSize: 13.5, color: C.label, textAlign: 'center', lineHeight: 1.5 }}>Aucun trait chiffré à comparer pour ces deux races.</div>
+      )}
+
       <div style={{ marginTop: 22, display: 'flex', gap: 16, justifyContent: 'center', fontSize: 12, color: C.sub }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: C.espresso }} />{COMPARE.a.nom}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: C.grayC }} />{COMPARE.b.nom}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: C.espresso }} />{a.nom}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: C.grayC }} />{b.nom}</div>
       </div>
     </Screen>
   )
@@ -147,6 +236,7 @@ export function Fiche() {
   // Default to the user's own breed when it's in the catalogue, else the first.
   const initial = Math.max(0, breeds.findIndex((b) => b.nom === dog.race))
   const [sel, setSel] = useState(initial)
+  const [condition, setCondition] = useState(null) // pathologie ouverte dans la fiche IA
   const b = breeds[Math.min(sel, breeds.length - 1)]
   const entretien = entretienLabel(b.traits)
   const stats = [
@@ -157,9 +247,12 @@ export function Fiche() {
   return (
     <Screen flush>
       <div style={{ margin: '0 20px' }}>
-        <BreedPhoto src={b.image} caption={`photo · ${b.nom.toLowerCase()}`} height={150} radius={20} />
+        <BreedPhoto src={b.image} caption={`photo · ${b.nom.toLowerCase()}`} height={150} radius={20} objectPosition={b.imagePos} />
       </div>
-      <div style={{ padding: '18px 20px 0' }}>
+      <div style={{ padding: '12px 20px 0' }}>
+        <PhotoEditor breed={b} />
+      </div>
+      <div style={{ padding: '6px 20px 0' }}>
         <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: C.label, fontWeight: 600, marginBottom: 6 }}>Choisir une race ({breeds.length})</div>
         <select style={ficheSelectStyle} value={Math.min(sel, breeds.length - 1)} onChange={(e) => setSel(Number(e.target.value))}>
           {breeds.map((br, i) => <option key={br.id} value={i}>{br.nom}</option>)}
@@ -184,17 +277,172 @@ export function Fiche() {
         </>)}
         {!!b.sante.length && (<>
           <SectionLabel style={{ marginTop: 24, marginBottom: 12 }}>Problèmes de santé fréquents</SectionLabel>
+          <div style={{ fontSize: 11.5, color: C.label, marginBottom: 10 }}>Touchez une pathologie pour en savoir plus avec l'IA.</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {b.sante.map((s) => (
-              <div key={s} style={{ display: 'flex', gap: 10, alignItems: 'center', background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 12, padding: '12px 14px', fontSize: 13.5 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.danger, flex: 'none' }} />{s}
-              </div>
+              <button key={s} className="reset hoverable" onClick={() => setCondition(s)} style={{ display: 'flex', gap: 10, alignItems: 'center', width: '100%', textAlign: 'left', background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 12, padding: '12px 14px', fontSize: 13.5, cursor: 'pointer' }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.danger, flex: 'none' }} />
+                <span style={{ flex: 1 }}>{s}</span>
+                <span style={{ fontSize: 16, color: C.grayA, flex: 'none' }}>›</span>
+              </button>
             ))}
           </div>
         </>)}
         <div style={{ marginTop: 18 }}><PrimaryButton onClick={() => goScreen('compare')}>Comparer à une autre race</PrimaryButton></div>
+
+        <SectionLabel style={{ marginTop: 26, marginBottom: 12 }}>Aller plus loin avec l'IA</SectionLabel>
+        <BreedAIInfo breed={b} />
       </div>
+
+      {condition && <HealthConditionSheet condition={condition} race={b.nom} onClose={() => setCondition(null)} />}
     </Screen>
+  )
+}
+
+// Complément d'information de race généré par l'IA, enregistrable et
+// régénérable. Une fois sauvegardé, il est réaffiché sans nouvel appel.
+function BreedAIInfo({ breed }) {
+  const { aiReady, orKey, orModel, dog } = useApp()
+  const [text, setText] = useState(() => loadBreedInfo(breed.nom))
+  const [saved, setSaved] = useState(() => !!loadBreedInfo(breed.nom))
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  // Recharge depuis le cache quand on change de race.
+  useEffect(() => {
+    const cached = loadBreedInfo(breed.nom)
+    setText(cached); setSaved(!!cached); setError(''); setLoading(false)
+  }, [breed.nom])
+
+  const generate = async () => {
+    if (!aiReady || loading) return
+    setLoading(true); setError('')
+    try {
+      const out = await chatCompletion({
+        key: orKey,
+        model: orModel,
+        messages: buildMessages({ dog, instruction: INSTRUCTIONS.ficheInfo(breed.nom) }),
+      })
+      setText(out); setSaved(false)
+    } catch (e) {
+      setError(e.message || 'Échec de la génération.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const save = () => { saveBreedInfo(breed.nom, text); setSaved(true) }
+  const forget = () => { removeBreedInfo(breed.nom); setText(null); setSaved(false) }
+
+  if (!aiReady) return <ConnectKeyNote />
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {(text || error) && <AIResultCard text={text} error={error} />}
+
+      {text && !error && (
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          {!saved
+            ? <button className="reset" onClick={save} style={{ flex: 1, borderRadius: 999, padding: 13, textAlign: 'center', fontWeight: 600, fontSize: 14, cursor: 'pointer', background: C.espresso, color: C.cream, minHeight: 46 }}>💾 Enregistrer</button>
+            : <div style={{ flex: 1, fontSize: 12.5, color: C.label, display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ color: C.successDk }}>✓</span>Enregistré — réaffiché sans nouvel appel.</div>}
+          {saved && <button className="reset" onClick={forget} style={{ fontSize: 13, fontWeight: 600, color: C.danger, cursor: 'pointer' }}>Oublier</button>}
+        </div>
+      )}
+
+      <button
+        className="reset"
+        disabled={loading}
+        onClick={generate}
+        style={{ width: '100%', border: `1px solid ${C.grayB}`, borderRadius: 999, padding: 14, textAlign: 'center', fontWeight: 600, fontSize: 15, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.6 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 48 }}
+      >
+        {loading ? (
+          <>
+            <span style={{ width: 16, height: 16, border: '2px solid #C9B89B', borderTopColor: C.espresso, borderRadius: '50%', display: 'inline-block', animation: 'spin .8s linear infinite' }} />
+            Analyse en cours…
+          </>
+        ) : text || error ? '↻ Régénérer' : "✨ Plus d'informations avec l'IA"}
+      </button>
+    </div>
+  )
+}
+
+// Fiche IA d'une pathologie (overlay) : ce que c'est, ce que ça implique,
+// comment aider le chien, solutions. Enregistrable et régénérable, en cache
+// par pathologie (réutilisable d'une race à l'autre).
+function HealthConditionSheet({ condition, race, onClose }) {
+  const { aiReady, orKey, orModel, dog } = useApp()
+  const [text, setText] = useState(() => loadHealthInfo(condition))
+  const [saved, setSaved] = useState(() => !!loadHealthInfo(condition))
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  // Génère automatiquement à l'ouverture si rien n'est en cache et l'IA est prête.
+  useEffect(() => {
+    if (text || !aiReady) return
+    let alive = true
+    setLoading(true); setError('')
+    chatCompletion({ key: orKey, model: orModel, messages: buildMessages({ dog, instruction: INSTRUCTIONS.healthCondition(condition, race) }) })
+      .then((out) => { if (alive) { setText(out); setSaved(false) } })
+      .catch((e) => { if (alive) setError(e.message || 'Échec de la génération.') })
+      .finally(() => { if (alive) setLoading(false) })
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [condition])
+
+  const regenerate = async () => {
+    if (!aiReady || loading) return
+    setLoading(true); setError('')
+    try {
+      const out = await chatCompletion({ key: orKey, model: orModel, messages: buildMessages({ dog, instruction: INSTRUCTIONS.healthCondition(condition, race) }) })
+      setText(out); setSaved(false)
+    } catch (e) {
+      setError(e.message || 'Échec de la génération.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const save = () => { saveHealthInfo(condition, text); setSaved(true) }
+  const forget = () => { removeHealthInfo(condition); setSaved(false) }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(30,22,14,.5)', zIndex: 40, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, maxHeight: '88vh', overflowY: 'auto', background: C.cream, borderRadius: '22px 22px 0 0', padding: 22, animation: 'rise .25s ease' }}>
+        <div style={{ width: 38, height: 4, borderRadius: 2, background: C.grayB, margin: '0 auto 16px' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ width: 9, height: 9, borderRadius: '50%', background: C.danger, flex: 'none' }} />
+          <div style={{ fontFamily: serif, fontSize: 23, lineHeight: 1.15, flex: 1, minWidth: 0 }}>{condition}</div>
+        </div>
+        <div style={{ fontSize: 12, color: C.label, marginTop: 4 }}>Pathologie fréquente · {race}</div>
+
+        {!aiReady ? (
+          <div style={{ marginTop: 16 }}><ConnectKeyNote /></div>
+        ) : (<>
+          {loading && !text && (
+            <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, color: C.sub }}>
+              <span style={{ width: 16, height: 16, border: '2px solid #C9B89B', borderTopColor: C.espresso, borderRadius: '50%', display: 'inline-block', animation: 'spin .8s linear infinite' }} />
+              Analyse en cours…
+            </div>
+          )}
+          {(text || error) && <div style={{ marginTop: 16 }}><AIResultCard text={text} error={error} /></div>}
+
+          {text && !error && (
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 12 }}>
+              {!saved
+                ? <button className="reset" onClick={save} style={{ flex: 1, borderRadius: 999, padding: 13, textAlign: 'center', fontWeight: 600, fontSize: 14, cursor: 'pointer', background: C.espresso, color: C.cream, minHeight: 46 }}>💾 Enregistrer</button>
+                : <div style={{ flex: 1, fontSize: 12.5, color: C.label, display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ color: C.successDk }}>✓</span>Enregistré localement.</div>}
+              {saved && <button className="reset" onClick={forget} style={{ fontSize: 13, fontWeight: 600, color: C.danger, cursor: 'pointer' }}>Oublier</button>}
+            </div>
+          )}
+
+          <button className="reset" disabled={loading} onClick={regenerate} style={{ marginTop: 12, width: '100%', border: `1px solid ${C.grayB}`, borderRadius: 999, padding: 13, textAlign: 'center', fontWeight: 600, fontSize: 14, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.6 : 1, minHeight: 46 }}>
+            {loading ? 'Analyse en cours…' : text || error ? '↻ Régénérer' : "✨ Générer l'explication"}
+          </button>
+        </>)}
+
+        <button className="reset" onClick={onClose} style={{ marginTop: 12, width: '100%', borderRadius: 999, padding: 13, fontWeight: 600, fontSize: 14, cursor: 'pointer', border: `1px solid ${C.grayB}`, background: '#fff', color: C.body }}>Fermer</button>
+      </div>
+    </div>
   )
 }
 

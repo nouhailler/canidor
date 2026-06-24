@@ -11,6 +11,7 @@ export default function Profile() {
   const { goScreen } = useChrome()
   const [editing, setEditing] = useState(false)
   const [photoErr, setPhotoErr] = useState('')
+  const [framing, setFraming] = useState(false)
 
   const stats = [
     { k: 'Âge', v: `${dog.ageAnnees} ans` },
@@ -18,6 +19,8 @@ export default function Profile() {
     { k: 'Sexe', v: dog.sexe },
   ]
 
+  const pos = dog.photoPos || '50% 50%'
+  const zoom = dog.photoZoom || 1
   const pickPhoto = () => { setPhotoErr(''); pickImageFile((data) => updateDog({ photo: data }), (e) => setPhotoErr(e)) }
 
   return (
@@ -26,15 +29,22 @@ export default function Profile() {
         <button className="reset" onClick={pickPhoto} title="Changer la photo"
           style={{ position: 'relative', width: 84, height: 84, borderRadius: 24, margin: '0 auto 14px', overflow: 'hidden', cursor: 'pointer', background: 'repeating-linear-gradient(45deg,#3A2C20,#3A2C20 8px,#2F2316 8px,#2F2316 16px)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: serif, fontSize: 38, color: C.faint }}>
           {dog.photo
-            ? <img src={dog.photo} alt={dog.nom} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            ? <img src={dog.photo} alt={dog.nom} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: pos, transform: zoom > 1 ? `scale(${zoom})` : undefined, transformOrigin: pos, display: 'block' }} />
             : dog.nom[0]}
           <span style={{ position: 'absolute', left: 0, right: 0, bottom: 0, fontSize: 9, fontWeight: 600, letterSpacing: '.04em', color: C.cream, background: 'rgba(42,33,27,.72)', padding: '3px 0' }}>{dog.photo ? '✎ Changer' : '＋ Photo'}</span>
         </button>
         <div style={{ fontFamily: serif, fontSize: 30, lineHeight: 1 }}>{dog.nom}</div>
         <div style={{ fontSize: 13, color: C.label, marginTop: 6 }}>{dog.race}{dog.lof ? ' · LOF' : ''}</div>
-        {dog.photo && <button className="reset" onClick={() => updateDog({ photo: '' })} style={{ marginTop: 10, fontSize: 12, color: C.faint, cursor: 'pointer', textDecoration: 'underline' }}>Retirer la photo</button>}
+        {dog.photo && (
+          <div style={{ marginTop: 10, display: 'flex', gap: 16, justifyContent: 'center' }}>
+            <button className="reset" onClick={() => setFraming((v) => !v)} style={{ fontSize: 12, color: C.faint, cursor: 'pointer', textDecoration: 'underline' }}>{framing ? 'Terminer le cadrage' : '⤢ Recadrer / zoomer'}</button>
+            <button className="reset" onClick={() => updateDog({ photo: '' })} style={{ fontSize: 12, color: C.faint, cursor: 'pointer', textDecoration: 'underline' }}>Retirer la photo</button>
+          </div>
+        )}
         {photoErr && <div style={{ marginTop: 8, fontSize: 12, color: '#F2C4B4' }}>⚠ {photoErr}</div>}
       </div>
+
+      {dog.photo && framing && <PhotoFramer dog={dog} updateDog={updateDog} />}
 
       <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
         {stats.map((p) => (
@@ -67,6 +77,49 @@ export default function Profile() {
         Revoir l'introduction
       </button>
     </Screen>
+  )
+}
+
+// Cadrage de la photo du chien : recentrage (horizontal/vertical) + zoom, avec
+// aperçu carré en direct, pour ne garder que le chien. Persisté sur le profil
+// (photoPos / photoZoom) et appliqué partout où la photo apparaît.
+function PhotoFramer({ dog, updateDog }) {
+  const parse = (s) => {
+    const m = String(s || '').match(/(\d+)%\s+(\d+)%/)
+    return m ? { x: Number(m[1]), y: Number(m[2]) } : { x: 50, y: 50 }
+  }
+  const [pos, setPos] = useState(() => parse(dog.photoPos))
+  const [zoom, setZoom] = useState(() => dog.photoZoom || 1)
+  const posStr = `${pos.x}% ${pos.y}%`
+
+  const setX = (x) => { const next = { ...pos, x }; setPos(next); updateDog({ photoPos: `${next.x}% ${next.y}%` }) }
+  const setY = (y) => { const next = { ...pos, y }; setPos(next); updateDog({ photoPos: `${next.x}% ${next.y}%` }) }
+  const setZ = (z) => { setZoom(z); updateDog({ photoZoom: z }) }
+  const reset = () => { setPos({ x: 50, y: 50 }); setZoom(1); updateDog({ photoPos: '50% 50%', photoZoom: 1 }) }
+
+  return (
+    <div style={{ marginTop: 12, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ width: 96, height: 96, flex: 'none', borderRadius: 18, overflow: 'hidden', background: C.tile }}>
+          <img src={dog.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: posStr, transform: zoom > 1 ? `scale(${zoom})` : undefined, transformOrigin: posStr, display: 'block' }} />
+        </div>
+        <div style={{ fontSize: 12, color: C.label, lineHeight: 1.45 }}>Ajustez le cadre pour ne voir que {dog.nom}. L’aperçu correspond à l’affichage réel.</div>
+      </div>
+      <Slider label="Horizontal" value={pos.x} min={0} max={100} onChange={setX} />
+      <Slider label="Vertical" value={pos.y} min={0} max={100} onChange={setY} />
+      <Slider label="Zoom" value={zoom} min={1} max={3} step={0.05} onChange={setZ} suffix="×" />
+      <button className="reset" onClick={reset} style={{ alignSelf: 'flex-end', fontSize: 12.5, fontWeight: 600, color: C.accent, cursor: 'pointer' }}>Réinitialiser</button>
+    </div>
+  )
+}
+
+function Slider({ label, value, min = 0, max = 100, step = 1, onChange, suffix = '%' }) {
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5, color: C.label }}>
+      <span style={{ width: 64, flex: 'none' }}>{label}</span>
+      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} style={{ flex: 1, accentColor: C.accent, cursor: 'pointer' }} />
+      <span style={{ width: 38, flex: 'none', textAlign: 'right', color: C.sub, fontWeight: 600 }}>{suffix === '×' ? value.toFixed(2) + suffix : value + suffix}</span>
+    </label>
   )
 }
 
