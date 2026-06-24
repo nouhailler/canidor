@@ -1,13 +1,13 @@
 import { useCallback, useRef, useState } from 'react'
 import { useApp } from '../store/AppContext'
-import { chatCompletion } from '../lib/openrouter'
-import { buildMessages } from '../lib/prompts'
 
 // Capture-IA stage machine shared by photo/video/audio screens.
-// When a key+model are configured it performs a real OpenRouter call; otherwise
-// it falls back to the prototype's 2s simulation so the demo UI still works.
+// Quand un modèle est configuré, l'analyse part vers le fournisseur vision
+// (OpenAI/Anthropic/Google) si une image est fournie, sinon vers OpenRouter ;
+// à défaut de clé, on retombe sur la simulation 2s du prototype.
 export function useAnalysis() {
-  const { aiReady, orKey, orModel, dog } = useApp()
+  const { aiReady, visionReady, runAnalysis } = useApp()
+  const ready = aiReady || visionReady
   const [stage, setStage] = useState('idle') // idle | analyzing | result
   const [aiText, setAiText] = useState('')
   const [aiError, setAiError] = useState('')
@@ -28,7 +28,7 @@ export function useAnalysis() {
     setAiError('')
     setStage('analyzing')
 
-    if (!aiReady || !opts.instruction) {
+    if (!ready || !opts.instruction) {
       timer.current = setTimeout(() => setStage('result'), 2000)
       return
     }
@@ -36,46 +36,43 @@ export function useAnalysis() {
     const controller = new AbortController()
     abort.current = controller
     const startedAt = Date.now()
-    chatCompletion({
-      key: orKey,
-      model: orModel,
-      messages: buildMessages({ dog, instruction: opts.instruction, image: opts.image }),
-      signal: controller.signal,
-    })
+    runAnalysis({ instruction: opts.instruction, image: opts.image, signal: controller.signal })
       .then((text) => setAiText(text))
       .catch((e) => { if (e.name !== 'AbortError') setAiError(e.message || 'Échec de l’analyse IA.') })
       .finally(() => {
         const wait = Math.max(0, 1200 - (Date.now() - startedAt))
         timer.current = setTimeout(() => setStage('result'), wait)
       })
-  }, [aiReady, orKey, orModel, dog])
+  }, [ready, runAnalysis])
 
-  return { stage, start, reset, aiText, aiError, aiReady }
+  return { stage, start, reset, aiText, aiError, aiReady: ready }
 }
 
 // One-shot text generation for Rapport/Explainer panels (no scan overlay).
+// Route via runAnalysis : image → fournisseur vision si configuré.
 export function useAIText() {
-  const { aiReady, orKey, orModel, dog } = useApp()
+  const { aiReady, visionReady, runAnalysis } = useApp()
+  const ready = aiReady || visionReady
   const [loading, setLoading] = useState(false)
   const [text, setText] = useState('')
   const [error, setError] = useState('')
   const abort = useRef(null)
 
   const run = useCallback((instruction, image) => {
-    if (!aiReady) return
+    if (!ready) return
     if (abort.current) abort.current.abort()
     const controller = new AbortController()
     abort.current = controller
     setLoading(true)
     setError('')
     setText('')
-    chatCompletion({ key: orKey, model: orModel, messages: buildMessages({ dog, instruction, image }), signal: controller.signal })
+    runAnalysis({ instruction, image, signal: controller.signal })
       .then((t) => setText(t))
       .catch((e) => { if (e.name !== 'AbortError') setError(e.message || 'Échec de l’analyse IA.') })
       .finally(() => setLoading(false))
-  }, [aiReady, orKey, orModel, dog])
+  }, [ready, runAnalysis])
 
   const reset = useCallback(() => { setText(''); setError(''); setLoading(false) }, [])
 
-  return { aiReady, loading, text, error, run, reset }
+  return { aiReady: ready, loading, text, error, run, reset }
 }

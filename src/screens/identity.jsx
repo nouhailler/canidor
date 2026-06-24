@@ -1,13 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { C, serif, mono } from '../theme'
 import { useChrome } from '../store/ChromeContext'
 import { useApp } from '../store/AppContext'
-import { Screen, Intro, SectionLabel, PrimaryButton, OutlineButton, UploadBox, PhotoPlaceholder, BreedPhoto, Tag, TraitRow, Bar, Chip, BulletLine, StatTile, TipNote, VetDisclaimer } from '../components/ui'
+import { Screen, Intro, SectionLabel, PrimaryButton, OutlineButton, UploadBox, PhotoPlaceholder, BreedPhoto, Avatar, Tag, TraitRow, Bar, Chip, BulletLine, StatTile, TipNote, VetDisclaimer } from '../components/ui'
 import CaptureScreen from '../components/CaptureScreen'
 import { AIPanel, AIResultCard, ConnectKeyNote } from '../components/ai'
 import { chatCompletion } from '../lib/openrouter'
 import { loadInfo as loadBreedInfo, saveInfo as saveBreedInfo, removeInfo as removeBreedInfo } from '../lib/breedInfoCache'
 import { loadInfo as loadHealthInfo, saveInfo as saveHealthInfo, removeInfo as removeHealthInfo } from '../lib/healthInfoCache'
+import { loadInfo as loadScreeningInfo, saveInfo as saveScreeningInfo, removeInfo as removeScreeningInfo } from '../lib/screeningInfoCache'
+import { breedRange, traitValue, metricBounds, breedMatches } from '../lib/breedFilters'
 import { NF, COMPAT_FIELDS, IDENTIFY_RESULT } from '../data/datasets'
 import { useBreeds } from '../store/BreedsContext'
 import { IMPORT_TEMPLATE, normalizeBreed } from '../lib/breeds'
@@ -26,9 +29,9 @@ export function Identify() {
       analyzingLabel="Analyse morphologique en cours…"
       scanDur="1.6s"
       buildInstruction={() => INSTRUCTIONS.identify}
-      idle={({ start }) => (
+      idle={({ start, image, pickImage }) => (
         <>
-          <div style={{ marginTop: 18 }}><UploadBox icon="📷" caption="déposer une photo" height={280} /></div>
+          <div style={{ marginTop: 18 }}><UploadBox icon="📷" caption="déposer une photo" height={280} image={image} onPick={pickImage} /></div>
           <div style={{ marginTop: 18 }}><PrimaryButton onClick={start}>Analyser la photo</PrimaryButton></div>
         </>
       )}
@@ -229,14 +232,64 @@ const entretienLabel = (traits) => {
   return t[1] >= 75 ? 'Élevé' : t[1] >= 50 ? 'Modéré' : 'Faible'
 }
 
+// Retrouve l'index d'une race par nom (exact puis approché, accents ignorés).
+const normName = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+function findBreedIndex(breeds, name) {
+  const n = normName(name)
+  if (!n) return -1
+  const exact = breeds.findIndex((b) => normName(b.nom) === n)
+  if (exact >= 0) return exact
+  return breeds.findIndex((b) => { const bn = normName(b.nom); return bn.includes(n) || n.includes(bn) })
+}
+
+// Affiché quand une race demandée (ex. depuis la Carte des races) n'est pas
+// encore au catalogue : on propose de la générer via l'IA ou de l'ajouter.
+function BreedNotInCatalogue({ name, onBrowse }) {
+  const { aiReady } = useApp()
+  const { generateAI, loading, error } = useBreeds()
+  return (
+    <Screen>
+      <div style={{ background: C.espresso, color: C.cream, borderRadius: 20, padding: 22, textAlign: 'center' }}>
+        <div style={{ fontSize: 34 }}>🐾</div>
+        <div style={{ fontFamily: serif, fontSize: 26, marginTop: 8, lineHeight: 1.15 }}>{name}</div>
+        <div style={{ fontSize: 13, color: C.label, marginTop: 8, lineHeight: 1.5 }}>Cette race n'est pas encore dans votre catalogue.</div>
+      </div>
+      {aiReady ? (
+        <div style={{ marginTop: 18 }}>
+          <PrimaryButton onClick={loading === 'ai' ? undefined : () => generateAI(name)} style={loading === 'ai' ? { opacity: 0.7, cursor: 'default' } : undefined}>
+            {loading === 'ai' ? 'Génération en cours…' : `✨ Générer « ${name} » avec l'IA`}
+          </PrimaryButton>
+        </div>
+      ) : (
+        <div style={{ marginTop: 18 }}><ConnectKeyNote /></div>
+      )}
+      {error && <div style={{ marginTop: 12, fontSize: 12.5, color: C.danger, lineHeight: 1.5 }}>⚠ {error}</div>}
+      <div style={{ marginTop: 12 }}><OutlineButton onClick={onBrowse}>Ouvrir le catalogue</OutlineButton></div>
+    </Screen>
+  )
+}
+
 export function Fiche() {
   const { goScreen } = useChrome()
   const { dog } = useApp()
   const { breeds } = useBreeds()
+  const [params] = useSearchParams()
+  const wanted = params.get('breed') || '' // race demandée (ex. depuis la Carte des races)
+
   // Default to the user's own breed when it's in the catalogue, else the first.
   const initial = Math.max(0, breeds.findIndex((b) => b.nom === dog.race))
   const [sel, setSel] = useState(initial)
   const [condition, setCondition] = useState(null) // pathologie ouverte dans la fiche IA
+
+  // Sélectionne la race demandée par l'URL quand elle est (ou devient) présente
+  // au catalogue — y compris après une génération IA.
+  useEffect(() => {
+    if (!wanted) return
+    const i = findBreedIndex(breeds, wanted)
+    if (i >= 0) setSel(i)
+  }, [wanted, breeds])
+
+  const notInCatalogue = !!wanted && findBreedIndex(breeds, wanted) < 0
   const b = breeds[Math.min(sel, breeds.length - 1)]
   const entretien = entretienLabel(b.traits)
   const stats = [
@@ -244,6 +297,10 @@ export function Fiche() {
     { k: 'Espérance de vie', v: b.vie }, { k: 'Poids adulte', v: b.poids },
     { k: 'Taille au garrot', v: b.taille }, ...(entretien ? [{ k: 'Entretien du poil', v: entretien }] : []),
   ]
+
+  // Race demandée absente du catalogue : proposer de la générer (IA) ou l'ajouter.
+  if (notInCatalogue) return <BreedNotInCatalogue name={wanted} onBrowse={() => goScreen('catalogue')} />
+
   return (
     <Screen flush>
       <div style={{ margin: '0 20px' }}>
@@ -446,9 +503,96 @@ function HealthConditionSheet({ condition, race, onClose }) {
   )
 }
 
+// Fiche IA générique (overlay) : génère automatiquement une explication à
+// l'ouverture, enregistrable et régénérable, avec cache fourni par l'appelant.
+function AIInfoSheet({ title, subtitle, dotColor = C.danger, instruction, cacheLoad, cacheSave, cacheRemove, onClose }) {
+  const { aiReady, orKey, orModel, dog } = useApp()
+  const [text, setText] = useState(() => cacheLoad())
+  const [saved, setSaved] = useState(() => !!cacheLoad())
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const run = () => {
+    setLoading(true); setError('')
+    return chatCompletion({ key: orKey, model: orModel, messages: buildMessages({ dog, instruction }) })
+      .then((out) => { setText(out); setSaved(false) })
+      .catch((e) => setError(e.message || 'Échec de la génération.'))
+      .finally(() => setLoading(false))
+  }
+
+  // Génère automatiquement à l'ouverture si rien n'est en cache et l'IA est prête.
+  useEffect(() => {
+    if (text || !aiReady) return
+    let alive = true
+    setLoading(true); setError('')
+    chatCompletion({ key: orKey, model: orModel, messages: buildMessages({ dog, instruction }) })
+      .then((out) => { if (alive) { setText(out); setSaved(false) } })
+      .catch((e) => { if (alive) setError(e.message || 'Échec de la génération.') })
+      .finally(() => { if (alive) setLoading(false) })
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const save = () => { cacheSave(text); setSaved(true) }
+  const forget = () => { cacheRemove(); setSaved(false) }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(30,22,14,.5)', zIndex: 40, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, maxHeight: '88vh', overflowY: 'auto', background: C.cream, borderRadius: '22px 22px 0 0', padding: 22, animation: 'rise .25s ease' }}>
+        <div style={{ width: 38, height: 4, borderRadius: 2, background: C.grayB, margin: '0 auto 16px' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ width: 9, height: 9, borderRadius: '50%', background: dotColor, flex: 'none' }} />
+          <div style={{ fontFamily: serif, fontSize: 23, lineHeight: 1.15, flex: 1, minWidth: 0 }}>{title}</div>
+        </div>
+        {subtitle && <div style={{ fontSize: 12, color: C.label, marginTop: 4 }}>{subtitle}</div>}
+
+        {!aiReady ? (
+          <div style={{ marginTop: 16 }}><ConnectKeyNote /></div>
+        ) : (<>
+          {loading && !text && (
+            <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, color: C.sub }}>
+              <span style={{ width: 16, height: 16, border: '2px solid #C9B89B', borderTopColor: C.espresso, borderRadius: '50%', display: 'inline-block', animation: 'spin .8s linear infinite' }} />
+              Analyse en cours…
+            </div>
+          )}
+          {(text || error) && <div style={{ marginTop: 16 }}><AIResultCard text={text} error={error} /></div>}
+
+          {text && !error && (
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 12 }}>
+              {!saved
+                ? <button className="reset" onClick={save} style={{ flex: 1, borderRadius: 999, padding: 13, textAlign: 'center', fontWeight: 600, fontSize: 14, cursor: 'pointer', background: C.espresso, color: C.cream, minHeight: 46 }}>💾 Enregistrer</button>
+                : <div style={{ flex: 1, fontSize: 12.5, color: C.label, display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ color: C.successDk }}>✓</span>Enregistré localement.</div>}
+              {saved && <button className="reset" onClick={forget} style={{ fontSize: 13, fontWeight: 600, color: C.danger, cursor: 'pointer' }}>Oublier</button>}
+            </div>
+          )}
+
+          <button className="reset" disabled={loading} onClick={() => !loading && run()} style={{ marginTop: 12, width: '100%', border: `1px solid ${C.grayB}`, borderRadius: 999, padding: 13, textAlign: 'center', fontWeight: 600, fontSize: 14, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.6 : 1, minHeight: 46 }}>
+            {loading ? 'Analyse en cours…' : text || error ? '↻ Régénérer' : "✨ Générer l'explication"}
+          </button>
+        </>)}
+
+        <button className="reset" onClick={onClose} style={{ marginTop: 12, width: '100%', borderRadius: 999, padding: 13, fontWeight: 600, fontSize: 14, cursor: 'pointer', border: `1px solid ${C.grayB}`, background: '#fff', color: C.body }}>Fermer</button>
+      </div>
+    </div>
+  )
+}
+
 /* ---------------- Catalogue des races (Liste/détail) ---------------- */
 const SOURCE_LABEL = { user: 'Ajout', ai: 'IA', import: 'Import', dogapi: 'The Dog API' }
 const catInput = { width: '100%', border: `1px solid ${C.cardBorder}`, background: '#FAF4EA', borderRadius: 12, padding: '11px 14px', fontSize: 14, color: C.espresso, outline: 'none' }
+
+// Filtres physiques (intervalles parsés depuis le texte) et traits (0–100).
+const METRIC_FILTERS = [
+  { key: 'taille', label: 'Taille', unit: 'cm' },
+  { key: 'poids', label: 'Poids', unit: 'kg' },
+  { key: 'vie', label: 'Espérance de vie', unit: 'ans' },
+]
+const TRAIT_FILTERS = [
+  { key: 'energie', label: 'Énergie', match: 'energie' },
+  { key: 'education', label: "Facilité d'éducation", match: 'facilit' },
+  { key: 'sociabilite', label: 'Sociabilité', match: 'sociab' },
+  { key: 'entretien', label: 'Entretien du poil', match: 'entretien' },
+]
 
 function ToolBtn({ active, onClick, children }) {
   return (
@@ -465,7 +609,9 @@ export function Catalogue() {
   const [selId, setSelId] = useState(null)
   const [q, setQ] = useState('')
   const [group, setGroup] = useState('')
-  const [panel, setPanel] = useState('') // '' | 'add' | 'ai' | 'import'
+  const [panel, setPanel] = useState('') // '' | 'add' | 'ai' | 'import' | 'filters'
+  const [hideSuggest, setHideSuggest] = useState(false)
+  const [filters, setFilters] = useState({ metric: {}, trait: {} }) // metric[key]=[lo,hi], trait[key]=min
 
   const selected = breeds.find((b) => b.id === selId) || null
 
@@ -475,20 +621,52 @@ export function Catalogue() {
     return () => setDetail(null)
   }, [selected, setDetail])
 
+  // Bornes des curseurs, calculées sur le catalogue courant.
+  const bounds = useMemo(
+    () => Object.fromEntries(METRIC_FILTERS.map((f) => [f.key, metricBounds(breeds, f.key)])),
+    [breeds],
+  )
+
   const groups = [...new Set(breeds.map((b) => b.groupe).filter((g) => g && g !== '—'))].sort()
-  const needle = q.trim().toLowerCase()
+  const needle = q.trim()
+
+  // Un filtre métrique est actif s'il restreint l'intervalle complet ; un filtre
+  // de trait s'il impose un minimum > 0.
+  const matchFilters = (b) => {
+    for (const f of METRIC_FILTERS) {
+      const sel = filters.metric[f.key]
+      if (!sel) continue
+      const r = breedRange(b, f.key)
+      if (!r || r[1] < sel[0] || r[0] > sel[1]) return false
+    }
+    for (const f of TRAIT_FILTERS) {
+      const min = filters.trait[f.key] || 0
+      if (!min) continue
+      const v = traitValue(b, f.match)
+      if (v == null || v < min) return false
+    }
+    return true
+  }
+
   const filtered = breeds.filter((b) => {
     if (group && b.groupe !== group) return false
-    if (!needle) return true
-    return (
-      b.nom.toLowerCase().includes(needle) ||
-      b.origine.toLowerCase().includes(needle) ||
-      b.tags.some((t) => t.toLowerCase().includes(needle))
-    )
+    if (!breedMatches(b, needle)) return false
+    return matchFilters(b)
   })
 
+  // Suggestions d'auto-complétion : dès le 3e caractère, races dont le nom,
+  // l'origine ou le tempérament contient la saisie.
+  const suggestions = needle.length >= 3 && !hideSuggest
+    ? breeds.filter((b) => breedMatches(b, needle)).slice(0, 8)
+    : []
+
+  const activeFilterCount =
+    METRIC_FILTERS.filter((f) => filters.metric[f.key]).length +
+    TRAIT_FILTERS.filter((f) => (filters.trait[f.key] || 0) > 0).length
+
   const togglePanel = (p) => { setError(''); setPanel((cur) => (cur === p ? '' : p)) }
-  const openBreed = (id) => { setPanel(''); setSelId(id) }
+  const openBreed = (id) => { setPanel(''); setHideSuggest(true); setSelId(id) }
+  const resetFilters = () => setFilters({ metric: {}, trait: {} })
 
   /* -------- detail view -------- */
   if (selected) {
@@ -533,15 +711,34 @@ export function Catalogue() {
     <Screen>
       <Intro>Recherchez, filtrez, ajoutez ou importez des races. Touchez une carte pour sa fiche détaillée.</Intro>
 
-      <input style={{ ...catInput, marginTop: 16 }} placeholder="Rechercher (nom, origine, tempérament)…" value={q} onChange={(e) => setQ(e.target.value)} />
+      <div style={{ position: 'relative', marginTop: 16 }}>
+        <input style={catInput} placeholder="Rechercher (nom, origine, tempérament)…" value={q}
+          onChange={(e) => { setQ(e.target.value); setHideSuggest(false) }} />
+        {!!suggestions.length && (
+          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, marginTop: 6, background: '#fff', border: `1px solid ${C.cardBorder}`, borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,.14)', maxHeight: 280, overflowY: 'auto' }}>
+            {suggestions.map((b) => (
+              <button key={b.id} className="reset" onClick={() => openBreed(b.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '10px 12px', cursor: 'pointer', borderBottom: `1px solid ${C.cardBorder}` }}>
+                <Avatar size={34} radius={9} fontSize={15} letter={b.nom[0]} src={b.image} pos={b.imagePos} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.nom}</div>
+                  <div style={{ fontSize: 11.5, color: C.label, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.origine}{b.tags.length ? ` · ${b.tags.slice(0, 2).join(', ')}` : ''}</div>
+                </div>
+                <span style={{ fontSize: 16, color: C.grayA, flex: 'none' }}>›</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <ToolBtn active={panel === 'filters'} onClick={() => togglePanel('filters')}>⛃ Filtres{activeFilterCount ? ` · ${activeFilterCount}` : ''}</ToolBtn>
         <ToolBtn active={panel === 'add'} onClick={() => togglePanel('add')}>＋ Ajouter</ToolBtn>
         <ToolBtn active={panel === 'ai'} onClick={() => togglePanel('ai')}>✨ Générer (IA)</ToolBtn>
         <ToolBtn active={panel === 'import'} onClick={() => togglePanel('import')}>⇪ Importer JSON</ToolBtn>
         <ToolBtn active={loading === 'dogapi'} onClick={() => importDogApi()}>{loading === 'dogapi' ? '⏳ Import…' : '🌐 The Dog API'}</ToolBtn>
       </div>
 
+      {panel === 'filters' && <FilterPanel bounds={bounds} filters={filters} setFilters={setFilters} onReset={resetFilters} activeCount={activeFilterCount} />}
       {panel === 'add' && <AddPanel onDone={(id) => { setPanel(''); openBreed(id) }} />}
       {panel === 'ai' && <AIGenPanel aiReady={aiReady} loading={loading === 'ai'} onGenerate={generateAI} onDone={openBreed} />}
       {panel === 'import' && <ImportPanel onImport={importJSON} />}
@@ -676,6 +873,52 @@ function ImportPanel({ onImport }) {
   )
 }
 
+// Panneau de filtres du catalogue : intervalles physiques (taille, poids, vie)
+// et minimums de traits (énergie, éducation, sociabilité, entretien).
+function FilterPanel({ bounds, filters, setFilters, onReset, activeCount }) {
+  const setMetric = (key, range) => setFilters((s) => ({ ...s, metric: { ...s.metric, [key]: range } }))
+  const setTrait = (key, min) => setFilters((s) => ({ ...s, trait: { ...s.trait, [key]: min } }))
+
+  return (
+    <div style={{ marginTop: 12, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', gap: 18 }}>
+      {METRIC_FILTERS.map((f) => {
+        const b = bounds[f.key]
+        if (!b || b[0] === b[1]) return null
+        const sel = filters.metric[f.key] || b
+        return (
+          <div key={f.key}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: C.body }}>{f.label}</span>
+              <span style={{ fontSize: 12, color: C.sub }}>{sel[0]}–{sel[1]} {f.unit}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input type="range" min={b[0]} max={b[1]} value={sel[0]} onChange={(e) => setMetric(f.key, [Math.min(Number(e.target.value), sel[1]), sel[1]])} style={{ flex: 1, accentColor: C.accent, cursor: 'pointer' }} />
+              <input type="range" min={b[0]} max={b[1]} value={sel[1]} onChange={(e) => setMetric(f.key, [sel[0], Math.max(Number(e.target.value), sel[0])])} style={{ flex: 1, accentColor: C.accent, cursor: 'pointer' }} />
+            </div>
+          </div>
+        )
+      })}
+
+      <div style={{ height: 1, background: C.cardBorder }} />
+
+      {TRAIT_FILTERS.map((f) => {
+        const min = filters.trait[f.key] || 0
+        return (
+          <label key={f.key} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5, color: C.body }}>
+            <span style={{ flex: 1, fontWeight: 600 }}>{f.label}</span>
+            <input type="range" min={0} max={100} value={min} onChange={(e) => setTrait(f.key, Number(e.target.value))} style={{ flex: 1.4, accentColor: C.accent, cursor: 'pointer' }} />
+            <span style={{ width: 52, flex: 'none', textAlign: 'right', color: C.sub, fontWeight: 600 }}>{min > 0 ? `≥ ${min}` : 'tous'}</span>
+          </label>
+        )
+      })}
+
+      {activeCount > 0 && (
+        <button className="reset" onClick={onReset} style={{ alignSelf: 'flex-end', fontSize: 12.5, fontWeight: 600, color: C.accent, cursor: 'pointer' }}>Réinitialiser les filtres</button>
+      )}
+    </div>
+  )
+}
+
 /* -------- éditeur de photo de race (Wikimédia · Google Images · fichier · URL) -------- */
 function PhotoEditor({ breed }) {
   const { setBreedImage } = useBreeds()
@@ -788,7 +1031,7 @@ function Slider({ label, value, onChange }) {
 /* ---------------- Carte du monde (Liste/détail) ---------------- */
 export function Worldmap() {
   const [sel, setSel] = useState(null)
-  const { setDetail } = useChrome()
+  const { setDetail, goScreen } = useChrome()
   const countries = NF.world.countries
 
   useEffect(() => {
@@ -824,11 +1067,14 @@ export function Worldmap() {
       </div>
       <div style={{ marginTop: 18, fontSize: 14, color: C.body, lineHeight: 1.55 }}>{c[3]}</div>
       <SectionLabel style={{ marginTop: 20, marginBottom: 12 }}>Races originaires</SectionLabel>
+      <div style={{ fontSize: 11.5, color: C.label, marginBottom: 10 }}>Touchez une race pour ouvrir sa fiche.</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {c[2].map((r) => (
-          <div key={r} style={{ display: 'flex', gap: 10, alignItems: 'center', background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 12, padding: '13px 14px', fontSize: 14, fontWeight: 500 }}>
-            <span style={{ color: C.espresso }}>🐾</span>{r}
-          </div>
+          <button key={r} className="reset hoverable" onClick={() => goScreen('fiche', { breed: r })} style={{ display: 'flex', gap: 10, alignItems: 'center', width: '100%', textAlign: 'left', background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 12, padding: '13px 14px', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>
+            <span style={{ color: C.espresso }}>🐾</span>
+            <span style={{ flex: 1 }}>{r}</span>
+            <span style={{ fontSize: 16, color: C.grayA, flex: 'none' }}>›</span>
+          </button>
         ))}
       </div>
     </Screen>
@@ -838,6 +1084,7 @@ export function Worldmap() {
 /* ---------------- Maladies génétiques (Calcul/Info) ---------------- */
 export function Genetics() {
   const [bi, setBi] = useState(0)
+  const [info, setInfo] = useState(null) // { kind: 'affection'|'depistage', name }
   const g = NF.genetics
   const sel = g.breeds[bi]
   const data = g.data[sel]
@@ -845,7 +1092,7 @@ export function Genetics() {
 
   return (
     <Screen>
-      <Intro>Prédispositions héréditaires et dépistages conseillés par race.</Intro>
+      <Intro>Prédispositions héréditaires et dépistages conseillés par race. Touchez une race pour son profil de vigilance.</Intro>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
         {g.breeds.map((b, i) => <Chip key={b} active={i === bi} onClick={() => setBi(i)} style={{ padding: '8px 13px', fontSize: 12.5 }}>{b}</Chip>)}
       </div>
@@ -856,23 +1103,62 @@ export function Genetics() {
         </div>
         <div style={{ fontSize: 13, fontWeight: 700, border: '1px solid #5A4636', borderRadius: 999, padding: '7px 14px' }}>{data.vig}</div>
       </div>
-      <SectionLabel style={{ marginTop: 20, marginBottom: 12 }}>Affections prédisposées</SectionLabel>
+
+      <SectionLabel style={{ marginTop: 20, marginBottom: 6 }}>Affections prédisposées</SectionLabel>
+      <div style={{ fontSize: 11.5, color: C.label, marginBottom: 10 }}>Touchez une affection pour une explication détaillée par l'IA.</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {data.risks.map((r) => (
-          <div key={r[0]} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: 14 }}>
+          <button key={r[0]} className="reset hoverable" onClick={() => setInfo({ kind: 'affection', name: r[0] })} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: 14, cursor: 'pointer' }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: riskCol(r[1]), flex: 'none' }} />
             <div style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{r[0]}</div>
             <div style={{ fontSize: 11, fontWeight: 600, color: riskCol(r[1]) }}>{r[1]}</div>
-          </div>
+            <span style={{ fontSize: 16, color: C.grayA, flex: 'none' }}>›</span>
+          </button>
         ))}
       </div>
-      <SectionLabel style={{ marginTop: 20, marginBottom: 12 }}>Dépistages conseillés</SectionLabel>
+
+      <SectionLabel style={{ marginTop: 20, marginBottom: 6 }}>Dépistages conseillés</SectionLabel>
+      <div style={{ fontSize: 11.5, color: C.label, marginBottom: 10 }}>Touchez un dépistage pour en savoir plus avec l'IA.</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {data.tests.map((t) => <BulletLine key={t} variant="do" boxed>{t}</BulletLine>)}
+        {data.tests.map((t) => (
+          <button key={t} className="reset hoverable" onClick={() => setInfo({ kind: 'depistage', name: t })} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 12, padding: '12px 14px', fontSize: 13.5, cursor: 'pointer' }}>
+            <span style={{ color: C.successDk, flex: 'none' }}>🔬</span>
+            <span style={{ flex: 1 }}>{t}</span>
+            <span style={{ fontSize: 16, color: C.grayA, flex: 'none' }}>›</span>
+          </button>
+        ))}
       </div>
+
       <div style={{ marginTop: 16 }}>
         <VetDisclaimer>Une prédisposition n'est pas une fatalité. Seul un vétérinaire peut établir un diagnostic.</VetDisclaimer>
       </div>
+
+      {info && info.kind === 'affection' && (
+        <AIInfoSheet
+          key={`a-${info.name}`}
+          title={info.name}
+          subtitle={`Affection prédisposée · ${sel}`}
+          dotColor={C.danger}
+          instruction={INSTRUCTIONS.healthCondition(info.name, sel)}
+          cacheLoad={() => loadHealthInfo(info.name)}
+          cacheSave={(t) => saveHealthInfo(info.name, t)}
+          cacheRemove={() => removeHealthInfo(info.name)}
+          onClose={() => setInfo(null)}
+        />
+      )}
+      {info && info.kind === 'depistage' && (
+        <AIInfoSheet
+          key={`d-${info.name}`}
+          title={info.name}
+          subtitle={`Dépistage conseillé · ${sel}`}
+          dotColor={C.successDk}
+          instruction={INSTRUCTIONS.screeningTest(info.name, sel)}
+          cacheLoad={() => loadScreeningInfo(info.name)}
+          cacheSave={(t) => saveScreeningInfo(info.name, t)}
+          cacheRemove={() => removeScreeningInfo(info.name)}
+          onClose={() => setInfo(null)}
+        />
+      )}
     </Screen>
   )
 }

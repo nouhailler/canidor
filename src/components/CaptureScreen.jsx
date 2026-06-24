@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { useAnalysis } from '../hooks/useAnalysis'
 import { Screen, Intro, ScanBox } from './ui'
 import { AIResultCard, ConnectKeyNote } from './ai'
 
 // Capture-IA archetype: idle -> analyzing (scan + spinner) -> result.
 // idle / result are render props so each screen keeps its bespoke layout.
+// L'image choisie (data URL) est conservée ici et envoyée au modèle vision.
 export default function CaptureScreen({
   intro,
   idle,
@@ -12,10 +14,11 @@ export default function CaptureScreen({
   scanHeight = 280,
   result,
   buildInstruction,
-  image,
+  image: initialImage,
   showConnectHint = true,
 }) {
   const { stage, start, reset, aiText, aiError, aiReady } = useAnalysis()
+  const [image, setImage] = useState(initialImage || null)
   const run = () => start({ instruction: buildInstruction ? buildInstruction() : undefined, image })
 
   return (
@@ -23,7 +26,7 @@ export default function CaptureScreen({
       {stage === 'idle' && (
         <>
           {intro && <Intro>{intro}</Intro>}
-          {idle({ start: run })}
+          {idle({ start: run, image, pickImage: setImage })}
         </>
       )}
 

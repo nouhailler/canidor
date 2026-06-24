@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { C, serif, mono } from '../theme'
-import { Screen, Intro, SectionLabel, PrimaryButton, OutlineButton, Chip, BulletLine } from '../components/ui'
+import { Screen, Intro, SectionLabel, PrimaryButton, OutlineButton, Chip, BulletLine, UploadBox } from '../components/ui'
 import CaptureScreen from '../components/CaptureScreen'
 import { AIPanel, ConnectKeyNote, AIResultCard } from '../components/ai'
 import { useAnalysis } from '../hooks/useAnalysis'
@@ -209,15 +209,9 @@ export function Translate() {
       scanDur="1.7s"
       scanHeight={300}
       buildInstruction={() => INSTRUCTIONS.translate}
-      idle={({ start }) => (
+      idle={({ start, image, pickImage }) => (
         <>
-          <div style={{ marginTop: 18, height: 300, borderRadius: 22, position: 'relative', overflow: 'hidden', background: 'repeating-linear-gradient(45deg,#ECDECA,#ECDECA 11px,#E1D1B7 11px,#E1D1B7 22px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
-            <div style={{ fontSize: 40, animation: 'wag 1.2s ease-in-out infinite', transformOrigin: 'bottom center' }}>🐕</div>
-            <span style={{ fontFamily: mono, fontSize: 11, color: C.label }}>vidéo · 0:06</span>
-            <div style={{ position: 'absolute', top: 14, left: 14, display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(16,15,13,.75)', color: C.cream, borderRadius: 999, padding: '4px 10px', fontSize: 11, fontWeight: 600 }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#E5544A', animation: 'pulsered 1s infinite' }} />REC
-            </div>
-          </div>
+          <div style={{ marginTop: 18 }}><UploadBox icon="🐕" caption="photo du chien" height={300} image={image} onPick={pickImage} /></div>
           <div style={{ marginTop: 18 }}><PrimaryButton onClick={start}>Interpréter le comportement</PrimaryButton></div>
         </>
       )}
@@ -254,14 +248,10 @@ export function Bodylang() {
       scanDur="1.5s"
       scanHeight={240}
       buildInstruction={() => INSTRUCTIONS.bodylang('')}
-      idle={({ start }) => (
+      idle={({ start, image, pickImage }) => (
         <>
-          <Intro>Décrivez la scène, ou importez une photo / vidéo. L'IA décode oreilles, queue, regard et posture.</Intro>
-          <div style={{ marginTop: 16, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 16, padding: 16, minHeight: 96, fontSize: 14, color: C.grayC, lineHeight: 1.5 }}>Ex. : « Il s'incline vers l'avant, l'arrière relevé, la queue qui remue… »</div>
-          <div style={{ marginTop: 12, display: 'flex', gap: 10 }}>
-            <div style={{ flex: 1, border: `1px dashed ${C.grayA}`, borderRadius: 14, padding: 16, textAlign: 'center', fontSize: 13, color: C.sub }}>📷 Photo</div>
-            <div style={{ flex: 1, border: `1px dashed ${C.grayA}`, borderRadius: 14, padding: 16, textAlign: 'center', fontSize: 13, color: C.sub }}>🎥 Vidéo</div>
-          </div>
+          <Intro>Importez une photo, ou décrivez la scène. L'IA décode oreilles, queue, regard et posture.</Intro>
+          <div style={{ marginTop: 16 }}><UploadBox icon="📷" caption="photo du chien" height={200} image={image} onPick={pickImage} /></div>
           <div style={{ marginTop: 16 }}><PrimaryButton onClick={start}>Décoder le langage</PrimaryButton></div>
           <div style={{ marginTop: 16, fontSize: 12, color: C.label }}>Émotions détectables : {bl.detect.map((d) => <span key={d} style={{ color: C.body, fontWeight: 600 }}>{d} · </span>)}</div>
         </>

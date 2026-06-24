@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react'
 import { FREE_MODELS } from '../data/models'
 import * as OR from '../lib/openrouter'
+import { buildMessages } from '../lib/prompts'
+import { validateVisionKey, fetchVisionModels, visionComplete } from '../lib/visionProviders'
 
 const AppContext = createContext(null)
 export const useApp = () => useContext(AppContext)
@@ -17,6 +19,9 @@ const DEFAULT_DOG = {
 
 const LS_DOG = 'canidor_dog'
 const LS_ONBOARDED = 'canidor_onboarded'
+const LS_VPROVIDER = 'canidor_v_provider'
+const LS_VKEY = 'canidor_v_key'
+const LS_VMODEL = 'canidor_v_model'
 
 function loadJSON(key, fallback) {
   try {
@@ -118,6 +123,78 @@ export function AppProvider({ children }) {
     [models, orModel],
   )
 
+  // ----- fournisseur « vision » (OpenAI / Anthropic / Google) -----
+  const [vProvider, setVProvider] = useState('openai')
+  const [vKey, setVKey] = useState('')
+  const [vStatus, setVStatus] = useState('idle') // idle | checking | valid | invalid
+  const [vMsg, setVMsg] = useState('')
+  const [vModel, setVModel] = useState(null)
+  const [vModels, setVModels] = useState([])
+  const [vShow, setVShow] = useState(false)
+
+  // Réhydrate la config vision et recharge la liste de modèles si une clé existe.
+  useEffect(() => {
+    try {
+      const p = localStorage.getItem(LS_VPROVIDER)
+      const k = localStorage.getItem(LS_VKEY)
+      const m = localStorage.getItem(LS_VMODEL)
+      if (p) setVProvider(p)
+      if (m) setVModel(m)
+      if (k) {
+        setVKey(k)
+        setVStatus('valid')
+        setVMsg('Clé enregistrée sur cet appareil.')
+        fetchVisionModels(p || 'openai', k).then((list) => { if (list && list.length) setVModels(list) }).catch(() => {})
+      }
+    } catch { /* ignore */ }
+  }, [])
+
+  const onVKeyChange = useCallback((v) => { setVKey(v); setVStatus('idle'); setVMsg('') }, [])
+  const toggleVShow = useCallback(() => setVShow((s) => !s), [])
+
+  // Changer de fournisseur : on repart d'une config vierge pour ce fournisseur.
+  const selectVProvider = useCallback((id) => {
+    setVProvider(id); setVStatus('idle'); setVMsg(''); setVModel(null); setVModels([])
+    try { localStorage.setItem(LS_VPROVIDER, id); localStorage.removeItem(LS_VKEY); localStorage.removeItem(LS_VMODEL) } catch { /* ignore */ }
+  }, [])
+
+  const validateVKey = useCallback(async () => {
+    setVStatus('checking'); setVMsg('')
+    const res = await validateVisionKey(vProvider, vKey)
+    setVStatus(res.status); setVMsg(res.msg); setVModels(res.models)
+    if (res.status === 'valid') {
+      try { localStorage.setItem(LS_VPROVIDER, vProvider); localStorage.setItem(LS_VKEY, (vKey || '').trim()) } catch { /* ignore */ }
+      // Conserve le modèle choisi s'il existe encore, sinon on réinitialise.
+      setVModel((cur) => (res.models.some((m) => m.id === cur) ? cur : null))
+    }
+  }, [vProvider, vKey])
+
+  const selectVModel = useCallback((id) => {
+    setVModel(id)
+    try { localStorage.setItem(LS_VMODEL, id) } catch { /* ignore */ }
+  }, [])
+
+  const visionReady = vStatus === 'valid' && !!vModel
+  const visionModelName = useMemo(
+    () => (vModels.find((m) => m.id === vModel) || {}).name || vModel || 'aucun sélectionné',
+    [vModels, vModel],
+  )
+
+  // Routeur d'analyse : une image part vers le fournisseur vision si configuré,
+  // sinon vers OpenRouter ; le texte préfère OpenRouter, à défaut la vision.
+  const runAnalysis = useCallback(({ instruction, image, signal }) => {
+    if (image && visionReady) {
+      return visionComplete({ provider: vProvider, key: vKey, model: vModel, dog, instruction, image, signal })
+    }
+    if (aiReady) {
+      return OR.chatCompletion({ key: orKey, model: orModel, messages: buildMessages({ dog, instruction, image }), signal })
+    }
+    if (visionReady) {
+      return visionComplete({ provider: vProvider, key: vKey, model: vModel, dog, instruction, image, signal })
+    }
+    return Promise.reject(new Error('Aucun modèle IA configuré.'))
+  }, [visionReady, aiReady, vProvider, vKey, vModel, orKey, orModel, dog])
+
   const value = {
     // onboarding
     onboarded, completeOnboarding, replayOnboarding,
@@ -126,6 +203,11 @@ export function AppProvider({ children }) {
     // openrouter
     orKey, orStatus, orMsg, orModel, orShow, models, aiReady, modelName,
     onKeyChange, toggleShow, selectModel, validateKey,
+    // fournisseur vision
+    vProvider, vKey, vStatus, vMsg, vModel, vModels, vShow, visionReady, visionModelName,
+    onVKeyChange, toggleVShow, selectVProvider, validateVKey, selectVModel,
+    // routeur d'analyse (image → vision si dispo, sinon OpenRouter)
+    runAnalysis,
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

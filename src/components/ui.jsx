@@ -1,4 +1,5 @@
 import { C, serif, mono, card, placeholderLight, placeholderUpload, placeholderDark } from '../theme'
+import { pickImageFile } from '../lib/breedImage'
 
 // ---- layout shells ----
 export function Screen({ children, flush = false, style }) {
@@ -164,12 +165,22 @@ export function BreedPhoto({ src, caption, height = 150, radius = 20, align = 'c
   return <PhotoPlaceholder caption={caption} height={height} radius={radius} align={align} style={style} />
 }
 
-// Upload dropzone (dashed warm stripes + circular icon)
-export function UploadBox({ icon, caption, height = 280 }) {
+// Upload dropzone (dashed warm stripes + circular icon). Quand onPick est
+// fourni, un clic ouvre le sélecteur de fichier et un aperçu remplace la zone.
+export function UploadBox({ icon, caption, height = 280, image, onPick }) {
+  const pick = () => { if (onPick) pickImageFile(onPick) }
+  if (image) {
+    return (
+      <div onClick={pick} style={{ height, borderRadius: 22, overflow: 'hidden', position: 'relative', cursor: onPick ? 'pointer' : 'default', background: '#000' }}>
+        <img src={image} alt={caption} style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+        {onPick && <span style={{ position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)', fontSize: 11, fontWeight: 600, color: C.cream, background: 'rgba(42,33,27,.72)', borderRadius: 999, padding: '5px 12px' }}>✎ Changer l’image</span>}
+      </div>
+    )
+  }
   return (
-    <div style={{ height, borderRadius: 22, border: `1.5px dashed ${C.grayA}`, background: placeholderUpload, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
+    <div onClick={pick} style={{ height, borderRadius: 22, border: `1.5px dashed ${C.grayA}`, background: placeholderUpload, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, cursor: onPick ? 'pointer' : 'default' }}>
       <div style={{ width: 60, height: 60, borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, boxShadow: '0 4px 14px rgba(0,0,0,.08)' }}>{icon}</div>
-      <span style={{ fontFamily: mono, fontSize: 11, color: C.label }}>{caption}</span>
+      <span style={{ fontFamily: mono, fontSize: 11, color: C.label }}>{onPick ? `${caption} — toucher pour choisir` : caption}</span>
     </div>
   )
 }

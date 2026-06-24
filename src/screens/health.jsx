@@ -17,13 +17,13 @@ export function HealthPhoto() {
       scanDur="1.4s"
       scanHeight={240}
       buildInstruction={() => INSTRUCTIONS.healthphoto(zone)}
-      idle={({ start }) => (
+      idle={({ start, image, pickImage }) => (
         <>
           <Intro>Sélectionnez la zone puis photographiez-la de près, bien éclairée.</Intro>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
             {zones.map((z) => <Chip key={z} active={zone === z} onClick={() => setZone(z)}>{z}</Chip>)}
           </div>
-          <div style={{ marginTop: 16 }}><UploadBox icon="🔬" caption={`photo · zone ${zone.toLowerCase()}`} height={240} /></div>
+          <div style={{ marginTop: 16 }}><UploadBox icon="🔬" caption={`photo · zone ${zone.toLowerCase()}`} height={240} image={image} onPick={pickImage} /></div>
           <div style={{ marginTop: 16 }}><PrimaryButton onClick={start}>Analyser la zone</PrimaryButton></div>
         </>
       )}
@@ -115,10 +115,10 @@ export function Pain() {
       scanDur="1.5s"
       scanHeight={260}
       buildInstruction={() => INSTRUCTIONS.pain}
-      idle={({ start }) => (
+      idle={({ start, image, pickImage }) => (
         <>
           <Intro>Filmez ou photographiez votre chien en mouvement. L'IA repère les signes de douleur.</Intro>
-          <div style={{ marginTop: 18 }}><UploadBox icon="🩺" caption="vidéo · démarche" height={260} /></div>
+          <div style={{ marginTop: 18 }}><UploadBox icon="🩺" caption="photo · démarche" height={260} image={image} onPick={pickImage} /></div>
           <div style={{ marginTop: 16 }}><PrimaryButton onClick={start}>Analyser la démarche</PrimaryButton></div>
         </>
       )}

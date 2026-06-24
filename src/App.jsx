@@ -29,9 +29,10 @@ export default function App() {
     setDetail(null)
   }, [screen])
 
-  const goScreen = useCallback((id) => {
+  const goScreen = useCallback((id, query) => {
     setHelpOpen(false)
-    navigate(pathFor(id))
+    const qs = query ? '?' + new URLSearchParams(query).toString() : ''
+    navigate(pathFor(id) + qs)
   }, [navigate])
 
   const goTab = useCallback((tab) => goScreen(TAB_ROOT[tab]), [goScreen])
