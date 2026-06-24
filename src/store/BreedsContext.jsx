@@ -68,6 +68,12 @@ export function BreedsProvider({ children }) {
     addBreeds([{ ...breed, image: image || '' }])
   }, [addBreeds])
 
+  // Met à jour le recadrage (object-position) d'une race, ex. "50% 30%".
+  // Même mécanisme d'override par nom que setBreedImage.
+  const setBreedImagePos = useCallback((breed, imagePos) => {
+    addBreeds([{ ...breed, imagePos: imagePos || '' }])
+  }, [addBreeds])
+
   const removeBreed = useCallback((id) => {
     setAdded((prev) => {
       const next = prev.filter((b) => b.id !== id)
@@ -127,8 +133,8 @@ export function BreedsProvider({ children }) {
   }, [addBreeds])
 
   const value = useMemo(
-    () => ({ breeds, loading, error, setError, addBreeds, setBreedImage, removeBreed, resetCatalogue, importJSON, generateAI, importDogApi, addedCount: added.length }),
-    [breeds, loading, error, addBreeds, setBreedImage, removeBreed, resetCatalogue, importJSON, generateAI, importDogApi, added.length],
+    () => ({ breeds, loading, error, setError, addBreeds, setBreedImage, setBreedImagePos, removeBreed, resetCatalogue, importJSON, generateAI, importDogApi, addedCount: added.length }),
+    [breeds, loading, error, addBreeds, setBreedImage, setBreedImagePos, removeBreed, resetCatalogue, importJSON, generateAI, importDogApi, added.length],
   )
   return <BreedsContext.Provider value={value}>{children}</BreedsContext.Provider>
 }

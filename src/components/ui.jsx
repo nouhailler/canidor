@@ -149,11 +149,13 @@ export function PhotoPlaceholder({ caption, height = 150, radius = 20, align = '
 }
 
 // Breed photo: real <img> when a url is available, else the warm placeholder.
-export function BreedPhoto({ src, caption, height = 150, radius = 20, align = 'center', style }) {
+// objectPosition (ex. "50% 30%") recadre la photo dans son cadre (cover) pour
+// amener la partie utile — souvent la tête — au bon endroit.
+export function BreedPhoto({ src, caption, height = 150, radius = 20, align = 'center', objectPosition, style }) {
   if (src) {
     return (
       <div style={{ height, borderRadius: radius, overflow: 'hidden', background: placeholderLight, ...style }}>
-        <img src={src} alt={caption} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        <img src={src} alt={caption} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: objectPosition || '50% 50%', display: 'block' }} />
       </div>
     )
   }

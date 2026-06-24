@@ -32,6 +32,7 @@ export function normalizeBreed(raw = {}, source = 'import') {
     sante: Array.isArray(raw.sante) ? raw.sante.map((s) => str(s)).filter(Boolean) : [],
     note: str(raw.note),
     image: str(raw.image),
+    imagePos: str(raw.imagePos), // recadrage object-position, ex. "50% 30%" ('' = centré)
     source,
   }
 }

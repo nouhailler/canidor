@@ -250,7 +250,7 @@ export function Catalogue() {
     return (
       <Screen flush style={{ animation: 'rise .3s ease' }}>
         <div style={{ margin: '0 20px', position: 'relative' }}>
-          <BreedPhoto src={b.image} caption={`photo · ${b.nom}`} height={170} radius={20} align="bottom" />
+          <BreedPhoto src={b.image} caption={`photo · ${b.nom}`} height={170} radius={20} align="bottom" objectPosition={b.imagePos} />
         </div>
         <div style={{ padding: '16px 20px 0' }}>
           <PhotoEditor breed={b} />
@@ -312,7 +312,7 @@ export function Catalogue() {
       <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         {filtered.map((b) => (
           <div key={b.id} onClick={() => openBreed(b.id)} style={{ cursor: 'pointer', position: 'relative' }}>
-            <BreedPhoto src={b.image} caption="photo" height={118} radius={16} align="bottom" style={b.image ? undefined : { background: 'repeating-linear-gradient(45deg,#ECDECA,#ECDECA 10px,#E1D1B7 10px,#E1D1B7 20px)' }} />
+            <BreedPhoto src={b.image} caption="photo" height={118} radius={16} align="bottom" objectPosition={b.imagePos} style={b.image ? undefined : { background: 'repeating-linear-gradient(45deg,#ECDECA,#ECDECA 10px,#E1D1B7 10px,#E1D1B7 20px)' }} />
             {b.source !== 'base' && <span style={{ position: 'absolute', top: 8, left: 8, fontSize: 9, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: C.cream, background: 'rgba(42,33,27,.78)', borderRadius: 999, padding: '3px 8px' }}>{SOURCE_LABEL[b.source] || b.source}</span>}
             {b.source !== 'base' && (
               <button className="reset" onClick={(e) => { e.stopPropagation(); removeBreed(b.id) }} style={{ position: 'absolute', top: 6, right: 6, width: 24, height: 24, borderRadius: '50%', background: 'rgba(42,33,27,.78)', color: C.cream, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>✕</button>
@@ -432,6 +432,7 @@ function ImportPanel({ onImport }) {
 function PhotoEditor({ breed }) {
   const { setBreedImage } = useBreeds()
   const [open, setOpen] = useState(false)
+  const [recenter, setRecenter] = useState(false)
   const [url, setUrl] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -479,6 +480,16 @@ function PhotoEditor({ breed }) {
         </div>
       </div>
 
+      {breed.image && (
+        <div>
+          <button className="reset" onClick={() => setRecenter((v) => !v)}
+            style={{ ...pillBtn, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            ⤢ {recenter ? 'Masquer le recadrage' : 'Recadrer (position de la tête)'}
+          </button>
+          {recenter && <RecenterControl breed={breed} />}
+        </div>
+      )}
+
       {err && <div style={{ fontSize: 12.5, color: C.danger, lineHeight: 1.5 }}>⚠ {err}</div>}
 
       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -486,6 +497,43 @@ function PhotoEditor({ breed }) {
         <button className="reset" onClick={() => { setOpen(false); setErr('') }} style={{ fontSize: 13, color: C.label, cursor: 'pointer', marginLeft: 'auto' }}>Fermer</button>
       </div>
     </div>
+  )
+}
+
+// Recadrage de la photo : deux curseurs (horizontal/vertical) qui pilotent
+// object-position pour amener la partie utile — souvent la tête — au bon endroit.
+// La photo est recadrée en « cover », donc déplacer la fenêtre visible suffit.
+function RecenterControl({ breed }) {
+  const { setBreedImagePos } = useBreeds()
+  const parse = (s) => {
+    const m = String(s || '').match(/(\d+)%\s+(\d+)%/)
+    return m ? { x: Number(m[1]), y: Number(m[2]) } : { x: 50, y: 50 }
+  }
+  const [pos, setPos] = useState(() => parse(breed.imagePos))
+  const update = (next) => { setPos(next); setBreedImagePos(breed, `${next.x}% ${next.y}%`) }
+
+  return (
+    <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ borderRadius: 12, overflow: 'hidden', height: 130, background: C.cream }}>
+        <img src={breed.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: `${pos.x}% ${pos.y}%`, display: 'block' }} />
+      </div>
+      <Slider label="Horizontal" value={pos.x} onChange={(x) => update({ ...pos, x })} />
+      <Slider label="Vertical" value={pos.y} onChange={(y) => update({ ...pos, y })} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span style={{ fontSize: 11.5, color: C.label }}>Glissez pour amener la tête dans le cadre.</span>
+        <button className="reset" onClick={() => update({ x: 50, y: 50 })} style={{ fontSize: 12.5, fontWeight: 600, color: C.accent, cursor: 'pointer', marginLeft: 'auto' }}>Recentrer</button>
+      </div>
+    </div>
+  )
+}
+
+function Slider({ label, value, onChange }) {
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5, color: C.label }}>
+      <span style={{ width: 64, flex: 'none' }}>{label}</span>
+      <input type="range" min={0} max={100} value={value} onChange={(e) => onChange(Number(e.target.value))}
+        style={{ flex: 1, accentColor: C.accent, cursor: 'pointer' }} />
+    </label>
   )
 }
 
