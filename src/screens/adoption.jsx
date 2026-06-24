@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { C, serif } from '../theme'
 import { Screen, Intro, SectionLabel, PrimaryButton, OutlineButton, TipNote, Bar } from '../components/ui'
 import { AIPanel } from '../components/ai'
+import { useBreeds } from '../store/BreedsContext'
 import { NF, COMPAT, SIM, COMPAT_FIELDS } from '../data/datasets'
 import { INSTRUCTIONS } from '../lib/prompts'
+import { LIFESTYLE_FIELDS, LIFESTYLE_DEFAULTS, estimateCompat, summarize } from '../lib/lifestyle'
 
 const PillField = ({ k, v }) => (
   <div style={{ background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -12,39 +14,67 @@ const PillField = ({ k, v }) => (
   </div>
 )
 
-/* ---------------- Mode de vie (Rapport) ---------------- */
+/* ---------------- Mode de vie (Rapport dynamique) ---------------- */
+const lifestyleSelectStyle = { width: '100%', border: `1px solid ${C.cardBorder}`, background: '#FAF4EA', borderRadius: 10, padding: '11px 12px', fontSize: 15, fontWeight: 600, color: C.espresso, outline: 'none', marginTop: 4 }
+
 export function Lifestyle() {
+  const { breeds } = useBreeds()
   const [done, setDone] = useState(false)
-  const ls = NF.lifestyle
+  const [fields, setFields] = useState(LIFESTYLE_DEFAULTS)
+  const [results, setResults] = useState([])
+  const set = (k) => (e) => setFields((s) => ({ ...s, [k]: e.target.value }))
+  const fieldsLine = LIFESTYLE_FIELDS.map((f) => `${f.k}: ${fields[f.k]}`).join(', ')
   const col = (pct) => (pct >= 80 ? C.successDk2 : pct >= 60 ? C.warn : C.danger)
+
+  const generate = () => { setResults(estimateCompat(fields, breeds)); setDone(true) }
 
   if (!done) {
     return (
       <Screen>
-        <Intro>Décrivez votre quotidien : l'IA évalue votre compatibilité avec chaque race.</Intro>
+        <Intro>Décrivez votre quotidien : l'estimation évalue votre compatibilité avec chaque race du catalogue.</Intro>
         <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {ls.fields.map((f) => <PillField key={f[0]} k={f[0]} v={f[1]} />)}
+          {LIFESTYLE_FIELDS.map((f) => (
+            <label key={f.k} style={{ display: 'block', background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: '12px 14px' }}>
+              <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: C.label, fontWeight: 600 }}>{f.k}</div>
+              <select style={lifestyleSelectStyle} value={fields[f.k]} onChange={set(f.k)}>
+                {f.options.map((o) => <option key={o}>{o}</option>)}
+              </select>
+            </label>
+          ))}
         </div>
-        <div style={{ marginTop: 18 }}><PrimaryButton onClick={() => setDone(true)}>Générer le rapport</PrimaryButton></div>
+        <div style={{ marginTop: 18 }}><PrimaryButton onClick={generate}>Générer le rapport</PrimaryButton></div>
       </Screen>
     )
   }
   return (
     <Screen>
-      <div style={{ background: C.espresso, color: C.cream, borderRadius: 20, padding: 20, fontSize: 14, lineHeight: 1.55 }}>{ls.summary}</div>
-      <SectionLabel style={{ marginTop: 22, marginBottom: 14 }}>Compatibilité par race</SectionLabel>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {ls.results.map((r) => (
-          <div key={r[0]}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13.5, marginBottom: 6 }}>
-              <span style={{ fontWeight: 600 }}>{r[0]}</span>
-              <span style={{ color: col(r[1]), fontWeight: 600 }}>{r[1]}%</span>
-            </div>
-            <Bar value={r[1]} color={col(r[1])} height={8} />
-          </div>
+      <div style={{ background: C.espresso, color: C.cream, borderRadius: 20, padding: 20, fontSize: 14, lineHeight: 1.55 }}>{summarize(results)}</div>
+
+      {/* Rappel du quotidien décrit */}
+      <div style={{ marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {LIFESTYLE_FIELDS.map((f) => (
+          <span key={f.k} style={{ fontSize: 11.5, color: C.body, background: C.tile, borderRadius: 999, padding: '5px 10px' }}>{f.k} : <b style={{ fontWeight: 600 }}>{fields[f.k]}</b></span>
         ))}
       </div>
-      <div style={{ marginTop: 18 }}><AIPanel buildInstruction={() => INSTRUCTIONS.lifestyle(ls.fields.map((f) => `${f[0]}: ${f[1]}`).join(', '))} /></div>
+
+      <SectionLabel style={{ marginTop: 22, marginBottom: 14 }}>Compatibilité par race</SectionLabel>
+      {results.length ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {results.map((r) => (
+            <div key={r.name}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13.5, marginBottom: 6 }}>
+                <span style={{ fontWeight: 600 }}>{r.name}</span>
+                <span style={{ color: col(r.pct), fontWeight: 600 }}>{r.pct}%</span>
+              </div>
+              <Bar value={r.pct} color={col(r.pct)} height={8} />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ fontSize: 13.5, color: C.label, lineHeight: 1.5 }}>Aucune race chiffrée dans le catalogue. Ajoutez-en pour obtenir une estimation.</div>
+      )}
+
+      <div style={{ marginTop: 18 }}><AIPanel buildInstruction={() => INSTRUCTIONS.lifestyle(fieldsLine)} label="Rapport détaillé avec l'IA" /></div>
       <div style={{ marginTop: 16 }}><OutlineButton onClick={() => setDone(false)}>Modifier mon quotidien</OutlineButton></div>
     </Screen>
   )
