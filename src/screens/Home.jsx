@@ -13,9 +13,9 @@ export default function Home() {
 
   return (
     <Screen>
-      {/* Profile hero */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: C.espresso, color: C.cream, borderRadius: 22, padding: 16 }}>
-        <Avatar size={58} radius={16} fontSize={26} letter={dog.nom[0]} />
+      {/* Profile hero — clic → profil du chien */}
+      <div onClick={() => goScreen('profile')} className="hoverable" style={{ display: 'flex', alignItems: 'center', gap: 14, background: C.espresso, color: C.cream, borderRadius: 22, padding: 16, cursor: 'pointer' }}>
+        <Avatar size={58} radius={16} fontSize={26} letter={dog.nom[0]} src={dog.photo} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: serif, fontSize: 24, lineHeight: 1 }}>{dog.nom}</div>
           <div style={{ fontSize: 13, color: C.label, marginTop: 4 }}>{`${dog.race} · ${dog.ageAnnees} ans · ${sexSym}`}</div>

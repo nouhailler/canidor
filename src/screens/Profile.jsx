@@ -3,12 +3,14 @@ import { C, serif } from '../theme'
 import { useApp } from '../store/AppContext'
 import { useChrome } from '../store/ChromeContext'
 import { Screen, IconTile, PrimaryButton, OutlineButton } from '../components/ui'
+import { pickImageFile } from '../lib/breedImage'
 import { PROFILE_LINKS } from '../data/tools'
 
 export default function Profile() {
   const { dog, updateDog, replayOnboarding } = useApp()
   const { goScreen } = useChrome()
   const [editing, setEditing] = useState(false)
+  const [photoErr, setPhotoErr] = useState('')
 
   const stats = [
     { k: 'Âge', v: `${dog.ageAnnees} ans` },
@@ -16,12 +18,22 @@ export default function Profile() {
     { k: 'Sexe', v: dog.sexe },
   ]
 
+  const pickPhoto = () => { setPhotoErr(''); pickImageFile((data) => updateDog({ photo: data }), (e) => setPhotoErr(e)) }
+
   return (
     <Screen>
       <div style={{ background: C.espresso, color: C.cream, borderRadius: 24, padding: 24, textAlign: 'center' }}>
-        <div style={{ width: 84, height: 84, borderRadius: 24, margin: '0 auto 14px', background: 'repeating-linear-gradient(45deg,#3A2C20,#3A2C20 8px,#2F2316 8px,#2F2316 16px)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: serif, fontSize: 38, color: C.faint }}>{dog.nom[0]}</div>
+        <button className="reset" onClick={pickPhoto} title="Changer la photo"
+          style={{ position: 'relative', width: 84, height: 84, borderRadius: 24, margin: '0 auto 14px', overflow: 'hidden', cursor: 'pointer', background: 'repeating-linear-gradient(45deg,#3A2C20,#3A2C20 8px,#2F2316 8px,#2F2316 16px)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: serif, fontSize: 38, color: C.faint }}>
+          {dog.photo
+            ? <img src={dog.photo} alt={dog.nom} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            : dog.nom[0]}
+          <span style={{ position: 'absolute', left: 0, right: 0, bottom: 0, fontSize: 9, fontWeight: 600, letterSpacing: '.04em', color: C.cream, background: 'rgba(42,33,27,.72)', padding: '3px 0' }}>{dog.photo ? '✎ Changer' : '＋ Photo'}</span>
+        </button>
         <div style={{ fontFamily: serif, fontSize: 30, lineHeight: 1 }}>{dog.nom}</div>
         <div style={{ fontSize: 13, color: C.label, marginTop: 6 }}>{dog.race}{dog.lof ? ' · LOF' : ''}</div>
+        {dog.photo && <button className="reset" onClick={() => updateDog({ photo: '' })} style={{ marginTop: 10, fontSize: 12, color: C.faint, cursor: 'pointer', textDecoration: 'underline' }}>Retirer la photo</button>}
+        {photoErr && <div style={{ marginTop: 8, fontSize: 12, color: '#F2C4B4' }}>⚠ {photoErr}</div>}
       </div>
 
       <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>

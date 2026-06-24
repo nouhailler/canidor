@@ -119,10 +119,11 @@ export function IconTile({ children, tint = C.tile, size = 38, radius = 11, font
   )
 }
 
-export function Avatar({ size = 58, radius = 16, fontSize = 26, letter = 'B' }) {
+// Avatar du chien : photo (src) si disponible, sinon initiale sur fond rayé.
+export function Avatar({ size = 58, radius = 16, fontSize = 26, letter = 'B', src }) {
   return (
-    <div style={{ width: size, height: size, borderRadius: radius, flex: 'none', background: 'repeating-linear-gradient(45deg,#3A2C20,#3A2C20 7px,#2F2316 7px,#2F2316 14px)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: serif, fontSize, color: C.faint }}>
-      {letter}
+    <div style={{ width: size, height: size, borderRadius: radius, flex: 'none', overflow: 'hidden', background: 'repeating-linear-gradient(45deg,#3A2C20,#3A2C20 7px,#2F2316 7px,#2F2316 14px)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: serif, fontSize, color: C.faint }}>
+      {src ? <img src={src} alt={letter} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : letter}
     </div>
   )
 }

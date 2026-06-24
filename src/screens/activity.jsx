@@ -1,9 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { C, serif } from '../theme'
 import { Screen, Intro, SectionLabel, RegenButton, TipNote, BulletLine, IconTile } from '../components/ui'
 import { COACH, NF } from '../data/datasets'
 import { useApp } from '../store/AppContext'
 import { useActivity } from '../store/ActivityContext'
+import { chatCompletion } from '../lib/openrouter'
+import { buildMessages, INSTRUCTIONS } from '../lib/prompts'
+import { loadDetail, saveDetail, parseDetail } from '../lib/activityDetail'
 
 /* ---------------- Coach éducation ---------------- */
 export function Coach() {
@@ -46,11 +49,23 @@ export function Coach() {
 /* ---------------- Activités du jour (Générateur) ---------------- */
 export function Activities() {
   const { dog } = useApp()
-  const { today: t, list, weather, source, loading, error, aiReady, regenerate } = useActivity()
+  const { today: t, list, weather, geoStatus, source, loading, error, aiReady, regenerate, history, saveToHistory, removeFromHistory } = useActivity()
+  const [detail, setDetail] = useState(null) // activité ouverte dans la fiche détail
+
+  const place = weather.place ? ` · ${weather.place}` : ''
+  const weatherTip = geoStatus === 'denied'
+    ? 'Localisation indisponible · météo estimée'
+    : weather.outdoorOK ? 'Sorties extérieures possibles' : 'Mieux vaut rester à l’intérieur'
+
   return (
     <Screen>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: C.sub }}><span style={{ fontSize: 15 }}>☁</span>{weather} · adapté à {dog.nom}</div>
-      <div style={{ marginTop: 14, background: C.espresso, color: C.cream, borderRadius: 22, padding: 22 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: C.sub }}>
+        <span style={{ fontSize: 16 }}>{weather.icon}</span>
+        <span><b style={{ color: C.body, fontWeight: 600 }}>{weather.label} · {weather.temp}°</b>{place} · adapté à {dog.nom}</span>
+      </div>
+      <div style={{ fontSize: 11.5, color: C.label, marginTop: 4 }}>{weatherTip}</div>
+
+      <div onClick={() => setDetail(t)} className="hoverable" style={{ marginTop: 14, background: C.espresso, color: C.cream, borderRadius: 22, padding: 22, cursor: 'pointer' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: C.faint, fontWeight: 600 }}>Recommandé aujourd'hui</div>
           {source === 'ai' && <div style={{ fontSize: 9, letterSpacing: '.08em', textTransform: 'uppercase', color: C.accent, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: C.accent }} />IA</div>}
@@ -61,17 +76,19 @@ export function Activities() {
           <div style={{ fontSize: 12, fontWeight: 600, background: '#342817', borderRadius: 999, padding: '6px 12px' }}>{t.icon} {t.tag}</div>
         </div>
         <div style={{ fontSize: 13.5, color: C.grayA, lineHeight: 1.5, marginTop: 14 }}>{t.why}</div>
+        <div style={{ fontSize: 12, color: C.accent, fontWeight: 600, marginTop: 14 }}>Voir le détail ›</div>
       </div>
+
       <SectionLabel style={{ marginTop: 24, marginBottom: 12 }}>Autres idées</SectionLabel>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {list.map((a) => (
-          <div key={a.titre} style={{ display: 'flex', alignItems: 'center', gap: 14, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 16, padding: 14 }}>
+          <div key={a.titre} onClick={() => setDetail(a)} className="hoverable" style={{ display: 'flex', alignItems: 'center', gap: 14, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 16, padding: 14, cursor: 'pointer' }}>
             <IconTile size={44} radius={13} fontSize={20}>{a.icon}</IconTile>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 15, fontWeight: 600 }}>{a.titre}</div>
               <div style={{ fontSize: 12.5, color: C.label, marginTop: 2 }}>{a.why}</div>
             </div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: C.sub, flex: 'none' }}>{a.duree}</div>
+            <div style={{ fontSize: 18, color: C.grayA, flex: 'none' }}>›</div>
           </div>
         ))}
       </div>
@@ -81,7 +98,137 @@ export function Activities() {
           {loading ? 'Génération en cours…' : aiReady ? 'Générer avec l’IA' : "Générer d'autres activités"}
         </RegenButton>
       </div>
+
+      <ActivityHistory history={history} onRemove={removeFromHistory} onOpen={setDetail} />
+
+      {detail && (
+        <ActivityDetail
+          activity={detail}
+          onClose={() => setDetail(null)}
+          onSave={() => saveToHistory(detail)}
+        />
+      )}
     </Screen>
+  )
+}
+
+// Fiche détail d'une activité (overlay) : description complète, étapes
+// détaillées par l'IA (mises en cache) et enregistrement dans l'historique.
+function ActivityDetail({ activity: a, onClose, onSave }) {
+  const { aiReady, orKey, orModel, dog } = useApp()
+  const [det, setDet] = useState(() => loadDetail(a.titre))
+  const [loading, setLoading] = useState(false)
+  const [err, setErr] = useState('')
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => { setDet(loadDetail(a.titre)); setErr(''); setSaved(false) }, [a.titre])
+
+  const generate = async () => {
+    if (!aiReady || loading) return
+    setLoading(true); setErr('')
+    try {
+      const text = await chatCompletion({
+        key: orKey,
+        model: orModel,
+        messages: buildMessages({ dog, instruction: INSTRUCTIONS.activityDetail(a) }),
+      })
+      const parsed = parseDetail(text)
+      saveDetail(a.titre, parsed)
+      setDet(parsed)
+    } catch (e) {
+      setErr(e.message || 'Échec de la génération.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const save = () => { onSave(); setSaved(true) }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(30,22,14,.5)', zIndex: 40, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, maxHeight: '88vh', overflowY: 'auto', background: C.cream, borderRadius: '22px 22px 0 0', padding: 22, animation: 'rise .25s ease' }}>
+        <div style={{ width: 38, height: 4, borderRadius: 2, background: C.grayB, margin: '0 auto 16px' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <IconTile size={48} radius={14} fontSize={22}>{a.icon}</IconTile>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: serif, fontSize: 23, lineHeight: 1.1 }}>{a.titre}</div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: C.sub, background: C.tile, borderRadius: 999, padding: '4px 10px' }}>⏱ {a.duree}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: C.sub, background: C.tile, borderRadius: 999, padding: '4px 10px' }}>{a.tag}</span>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ fontSize: 14, color: C.body, lineHeight: 1.55, marginTop: 16 }}>{a.why}</div>
+
+        {det && (
+          <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {!!det.materiel.length && <DetailBlock label="Matériel" items={det.materiel} />}
+            {!!det.etapes.length && <DetailBlock label="Étapes" items={det.etapes} ordered />}
+            {det.conseil && <TipNote style={{ marginTop: 0 }}>💡 {det.conseil}</TipNote>}
+          </div>
+        )}
+
+        {err && <div style={{ marginTop: 12, fontSize: 13, color: C.danger, lineHeight: 1.5 }}>⚠ {err}</div>}
+
+        {aiReady && (
+          <button className="reset" disabled={loading} onClick={generate}
+            style={{ marginTop: 16, width: '100%', border: `1px solid ${C.grayB}`, borderRadius: 999, padding: 13, textAlign: 'center', fontWeight: 600, fontSize: 14, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.6 : 1, minHeight: 46 }}>
+            {loading ? 'Analyse en cours…' : det ? '↻ Régénérer les étapes' : '✨ Détailler les étapes avec l’IA'}
+          </button>
+        )}
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+          <button className="reset" disabled={saved} onClick={save}
+            style={{ flex: 1, borderRadius: 999, padding: 14, textAlign: 'center', fontWeight: 600, fontSize: 14, cursor: saved ? 'default' : 'pointer', background: saved ? C.tile : C.espresso, color: saved ? C.sub : C.cream, minHeight: 48 }}>
+            {saved ? '✓ Ajouté à l’historique' : '✓ Marquer comme fait'}
+          </button>
+          <button className="reset" onClick={onClose} style={{ borderRadius: 999, padding: '14px 20px', fontWeight: 600, fontSize: 14, cursor: 'pointer', border: `1px solid ${C.grayB}`, background: '#fff', color: C.body }}>Fermer</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DetailBlock({ label, items, ordered }) {
+  return (
+    <div>
+      <SectionLabel style={{ marginBottom: 10 }}>{label}</SectionLabel>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {items.map((it, idx) => (
+          <div key={idx} style={{ display: 'flex', gap: 10, fontSize: 13.5, color: C.body, lineHeight: 1.45 }}>
+            <span style={{ flex: 'none', width: 20, height: 20, borderRadius: '50%', background: C.tile, color: C.sub, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{ordered ? idx + 1 : '•'}</span>
+            <span>{it}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Historique des activités réalisées (persisté localement).
+function ActivityHistory({ history, onRemove, onOpen }) {
+  if (!history.length) return null
+  const fmt = (iso) => {
+    const d = new Date(iso)
+    return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+  }
+  return (
+    <>
+      <SectionLabel style={{ marginTop: 28, marginBottom: 12 }}>Historique des activités</SectionLabel>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {history.map((h) => (
+          <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: '11px 14px' }}>
+            <span style={{ fontSize: 18, flex: 'none' }}>{h.icon}</span>
+            <div onClick={() => onOpen(h)} style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>{h.titre}</div>
+              <div style={{ fontSize: 11.5, color: C.label, marginTop: 1 }}>{fmt(h.date)} · {h.tag} · {h.duree}</div>
+            </div>
+            <button className="reset" onClick={() => onRemove(h.id)} style={{ flex: 'none', fontSize: 16, color: C.grayA, cursor: 'pointer', padding: 4 }}>✕</button>
+          </div>
+        ))}
+      </div>
+    </>
   )
 }
 
