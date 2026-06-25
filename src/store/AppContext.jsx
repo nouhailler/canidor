@@ -182,15 +182,16 @@ export function AppProvider({ children }) {
 
   // Routeur d'analyse : une image part vers le fournisseur vision si configuré,
   // sinon vers OpenRouter ; le texte préfère OpenRouter, à défaut la vision.
-  const runAnalysis = useCallback(({ instruction, image, signal }) => {
-    if (image && visionReady) {
-      return visionComplete({ provider: vProvider, key: vKey, model: vModel, dog, instruction, image, signal })
+  const runAnalysis = useCallback(({ instruction, image, images, signal }) => {
+    const imgs = images && images.length ? images : image ? [image] : null
+    if (imgs && visionReady) {
+      return visionComplete({ provider: vProvider, key: vKey, model: vModel, dog, instruction, images: imgs, signal })
     }
     if (aiReady) {
-      return OR.chatCompletion({ key: orKey, model: orModel, messages: buildMessages({ dog, instruction, image }), signal })
+      return OR.chatCompletion({ key: orKey, model: orModel, messages: buildMessages({ dog, instruction, image: imgs ? imgs[0] : undefined }), signal })
     }
     if (visionReady) {
-      return visionComplete({ provider: vProvider, key: vKey, model: vModel, dog, instruction, image, signal })
+      return visionComplete({ provider: vProvider, key: vKey, model: vModel, dog, instruction, images: imgs || undefined, signal })
     }
     return Promise.reject(new Error('Aucun modèle IA configuré.'))
   }, [visionReady, aiReady, vProvider, vKey, vModel, orKey, orModel, dog])

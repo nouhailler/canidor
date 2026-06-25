@@ -82,9 +82,9 @@ function splitDataUrl(url) {
   return m ? { media: m[1], data: m[2] } : null
 }
 
-async function completeOpenAI({ key, model, system, instruction, image, signal, maxTokens }) {
-  const content = image
-    ? [{ type: 'text', text: instruction }, { type: 'image_url', image_url: { url: image } }]
+async function completeOpenAI({ key, model, system, instruction, images, signal, maxTokens }) {
+  const content = images.length
+    ? [{ type: 'text', text: instruction }, ...images.map((url) => ({ type: 'image_url', image_url: { url } }))]
     : instruction
   const r = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST', signal,
@@ -96,10 +96,9 @@ async function completeOpenAI({ key, model, system, instruction, image, signal, 
   return j?.choices?.[0]?.message?.content?.trim() || ''
 }
 
-async function completeAnthropic({ key, model, system, instruction, image, signal, maxTokens }) {
-  const parts = [{ type: 'text', text: instruction }]
-  const img = splitDataUrl(image)
-  if (img) parts.unshift({ type: 'image', source: { type: 'base64', media_type: img.media, data: img.data } })
+async function completeAnthropic({ key, model, system, instruction, images, signal, maxTokens }) {
+  const imgParts = images.map(splitDataUrl).filter(Boolean).map((img) => ({ type: 'image', source: { type: 'base64', media_type: img.media, data: img.data } }))
+  const parts = [...imgParts, { type: 'text', text: instruction }]
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST', signal,
     headers: {
@@ -113,10 +112,8 @@ async function completeAnthropic({ key, model, system, instruction, image, signa
   return (j?.content || []).map((c) => c.text || '').join('').trim()
 }
 
-async function completeGoogle({ key, model, system, instruction, image, signal, maxTokens }) {
-  const parts = [{ text: instruction }]
-  const img = splitDataUrl(image)
-  if (img) parts.push({ inline_data: { mime_type: img.media, data: img.data } })
+async function completeGoogle({ key, model, system, instruction, images, signal, maxTokens }) {
+  const parts = [{ text: instruction }, ...images.map(splitDataUrl).filter(Boolean).map((img) => ({ inline_data: { mime_type: img.media, data: img.data } }))]
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
     method: 'POST', signal,
     headers: { 'Content-Type': 'application/json' },
@@ -140,9 +137,12 @@ async function errMsg(r, label) {
   }
 }
 
-// Appel unifié : analyse texte + image via le fournisseur choisi.
-export async function visionComplete({ provider, key, model, dog, instruction, image, signal, maxTokens = 800 }) {
-  const args = { key: (key || '').trim(), model, system: systemPrompt(dog), instruction, image, signal, maxTokens }
+// Appel unifié : analyse texte + une ou plusieurs images via le fournisseur
+// choisi. Accepte `image` (data URL unique) ou `images` (tableau, ex. frames
+// extraites d'une vidéo).
+export async function visionComplete({ provider, key, model, dog, instruction, image, images, signal, maxTokens = 800 }) {
+  const imgs = (images && images.length ? images : image ? [image] : []).filter(Boolean)
+  const args = { key: (key || '').trim(), model, system: systemPrompt(dog), instruction, images: imgs, signal, maxTokens }
   if (provider === 'openai') return completeOpenAI(args)
   if (provider === 'anthropic') return completeAnthropic(args)
   if (provider === 'google') return completeGoogle(args)

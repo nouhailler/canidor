@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react'
 import { C, serif, mono } from '../theme'
-import { Screen, Intro, SectionLabel, PrimaryButton, OutlineButton, Chip, BulletLine, UploadBox, Bar } from '../components/ui'
+import { Screen, Intro, SectionLabel, PrimaryButton, OutlineButton, Chip, BulletLine, UploadBox, Bar, ScanBox } from '../components/ui'
 import CaptureScreen from '../components/CaptureScreen'
 import { AIPanel, ConnectKeyNote, AIResultCard } from '../components/ai'
 import { useAnalysis } from '../hooks/useAnalysis'
 import { useApp } from '../store/AppContext'
+import { useChrome } from '../store/ChromeContext'
 import { chatCompletion } from '../lib/openrouter'
 import { buildMessages } from '../lib/prompts'
-import { BEHAVIOR, NF, TRANSLATE_SIGNALS } from '../data/datasets'
+import { BEHAVIOR, NF } from '../data/datasets'
 import { INSTRUCTIONS } from '../lib/prompts'
 import { loadCase, saveCase, parseCase } from '../lib/behaviorCache'
 import { PSY_QUESTIONS, computeProfile, dimQualifier, profileSummary } from '../lib/psyProfile'
+import { pickVideoFile, extractFrames } from '../lib/videoFrames'
 
 const EXTRA_CASES = ['Léchage compulsif', 'Vol de nourriture', 'Réveils nocturnes', 'Pica (ingestion d’objets)']
 
@@ -244,42 +246,119 @@ export function Psy() {
   )
 }
 
-/* ---------------- Traducteur canin (Capture IA · vidéo) ---------------- */
+/* ---------------- Traducteur canin (vision IA · photo ou frames vidéo) ---------------- */
+function parseTranslate(text) {
+  const s = text.indexOf('{')
+  const e = text.lastIndexOf('}')
+  if (s === -1 || e === -1) throw new Error('Réponse IA illisible.')
+  const o = JSON.parse(text.slice(s, e + 1))
+  const signals = Array.isArray(o.signals)
+    ? o.signals.map((x) => ({ zone: String(x.zone || '').trim(), obs: String(x.obs || '').trim() })).filter((x) => x.zone || x.obs).slice(0, 6)
+    : []
+  return {
+    emotion: String(o.emotion || '—').trim(),
+    emoji: String(o.emoji || '🐾').trim(),
+    confidence: Math.max(0, Math.min(100, Math.round(Number(o.confidence) || 0))),
+    signals,
+    advice: String(o.advice || '').trim(),
+  }
+}
+
 export function Translate() {
-  return (
-    <CaptureScreen
-      intro="Filmez votre chien quelques secondes, corps entier visible. L'IA interprète sa posture, sa queue, ses oreilles et son expression."
-      analyzingLabel="Lecture du langage corporel…"
-      scanDur="1.7s"
-      scanHeight={300}
-      buildInstruction={() => INSTRUCTIONS.translate}
-      idle={({ start, image, pickImage }) => (
-        <>
-          <div style={{ marginTop: 18 }}><UploadBox icon="🐕" caption="photo du chien" height={300} image={image} onPick={pickImage} /></div>
-          <div style={{ marginTop: 18 }}><PrimaryButton onClick={start}>Interpréter le comportement</PrimaryButton></div>
-        </>
-      )}
-      result={({ reset }) => (
-        <>
-          <div style={{ background: C.espresso, color: C.cream, borderRadius: 22, padding: 24, textAlign: 'center' }}>
-            <div style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: C.faint, fontWeight: 600 }}>Émotion dominante</div>
-            <div style={{ fontSize: 40, marginTop: 10 }}>😄</div>
-            <div style={{ fontFamily: serif, fontSize: 30, lineHeight: 1.1, marginTop: 8 }}>Invitation au jeu</div>
-            <div style={{ fontSize: 13, color: C.label, marginTop: 8 }}>Excitation positive · confiance 91%</div>
-          </div>
+  const { visionReady, runAnalysis } = useApp()
+  const { goScreen } = useChrome()
+  const [media, setMedia] = useState(null) // { kind:'photo'|'video', preview, images:[], frames }
+  const [stage, setStage] = useState('idle') // idle | extracting | analyzing | result
+  const [result, setResult] = useState(null)
+  const [error, setError] = useState('')
+
+  const setPhoto = (dataUrl) => { setMedia({ kind: 'photo', preview: dataUrl, images: [dataUrl] }); setError(''); setResult(null) }
+  const pickVideo = () => pickVideoFile(async (file) => {
+    setError(''); setResult(null); setStage('extracting')
+    try {
+      const frames = await extractFrames(file, 3)
+      setMedia({ kind: 'video', preview: frames[0], images: frames, frames: frames.length })
+    } catch (e) { setError(e.message || 'Extraction des images impossible.') }
+    finally { setStage('idle') }
+  }, setError)
+
+  const analyze = async () => {
+    if (!media) return
+    setStage('analyzing'); setError(''); setResult(null)
+    try {
+      const text = await runAnalysis({ instruction: INSTRUCTIONS.translateJSON, images: media.images })
+      setResult(parseTranslate(text)); setStage('result')
+    } catch (e) {
+      setError(e.message || 'Échec de l’analyse.'); setStage('idle')
+    }
+  }
+
+  const reset = () => { setMedia(null); setResult(null); setError(''); setStage('idle') }
+
+  if (stage === 'analyzing') {
+    return <Screen><div style={{ marginTop: 18 }}><ScanBox label="Lecture du langage corporel…" height={300} scanDur="1.7s" /></div></Screen>
+  }
+
+  if (stage === 'result' && result) {
+    return (
+      <Screen style={{ animation: 'rise .4s ease' }}>
+        <div style={{ background: C.espresso, color: C.cream, borderRadius: 22, padding: 24, textAlign: 'center' }}>
+          <div style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: C.faint, fontWeight: 600 }}>Émotion dominante</div>
+          <div style={{ fontSize: 40, marginTop: 10 }}>{result.emoji}</div>
+          <div style={{ fontFamily: serif, fontSize: 30, lineHeight: 1.1, marginTop: 8 }}>{result.emotion}</div>
+          <div style={{ fontSize: 13, color: C.label, marginTop: 8 }}>Confiance {result.confidence}%{media?.kind === 'video' ? ` · ${media.frames} images analysées` : ''}</div>
+        </div>
+        {!!result.signals.length && (<>
           <SectionLabel style={{ marginTop: 18, marginBottom: 12 }}>Signaux observés</SectionLabel>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {TRANSLATE_SIGNALS.map((s) => (
-              <div key={s[0]} style={{ background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: 14, display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, flex: 'none' }}>{s[0]}</span>
-                <span style={{ fontSize: 13, color: C.sub, textAlign: 'right' }}>{s[1]}</span>
+            {result.signals.map((s, i) => (
+              <div key={i} style={{ background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: 14, display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, flex: 'none' }}>{s.zone || '—'}</span>
+                <span style={{ fontSize: 13, color: C.sub, textAlign: 'right' }}>{s.obs}</span>
               </div>
             ))}
           </div>
-          <div style={{ marginTop: 16 }}><OutlineButton onClick={reset}>Nouvelle vidéo</OutlineButton></div>
-        </>
+        </>)}
+        {result.advice && <TipNoteLine>{result.advice}</TipNoteLine>}
+        <div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
+          <OutlineButton onClick={() => setStage('idle')} style={{ flex: 1 }}>Réanalyser</OutlineButton>
+          <OutlineButton onClick={reset} style={{ flex: 1 }}>Nouveau média</OutlineButton>
+        </div>
+      </Screen>
+    )
+  }
+
+  return (
+    <Screen>
+      <Intro>Importez une photo, ou une courte vidéo : l'IA en extrait quelques images et interprète la posture, la queue, les oreilles et l'expression.</Intro>
+
+      {!visionReady && (
+        <div onClick={() => goScreen('settings')} style={{ marginTop: 14, background: C.tile, borderRadius: 14, padding: '13px 15px', fontSize: 12.5, color: C.body, lineHeight: 1.5, cursor: 'pointer', display: 'flex', gap: 10 }}>
+          <span style={{ fontSize: 16, flex: 'none' }}>👁️</span>
+          <span>L'interprétation de posture nécessite un <strong style={{ color: C.accent }}>modèle d'analyse d'images</strong> (OpenAI, Anthropic ou Google). Configurez-le dans <strong style={{ color: C.accent }}>Paramètres</strong>.</span>
+        </div>
       )}
-    />
+
+      <div style={{ marginTop: 16 }}><UploadBox icon="🐕" caption="photo du chien" height={260} image={media?.preview} onPick={setPhoto} /></div>
+      <div style={{ marginTop: 12 }}>
+        <OutlineButton onClick={pickVideo}>{stage === 'extracting' ? 'Extraction des images…' : '🎥 Importer une courte vidéo'}</OutlineButton>
+      </div>
+      {media?.kind === 'video' && <div style={{ marginTop: 10, fontSize: 12, color: C.label }}>{media.frames} images extraites de la vidéo, prêtes à analyser.</div>}
+      {error && <div style={{ marginTop: 12, fontSize: 12.5, color: C.danger, lineHeight: 1.5 }}>⚠ {error}</div>}
+
+      {media && visionReady && (
+        <div style={{ marginTop: 16 }}><PrimaryButton onClick={analyze}>Interpréter le langage corporel</PrimaryButton></div>
+      )}
+    </Screen>
+  )
+}
+
+// Petit encart conseil (réutilise le style des notes).
+function TipNoteLine({ children }) {
+  return (
+    <div style={{ marginTop: 16, background: C.tile, borderRadius: 14, padding: '13px 15px', fontSize: 13, color: C.body, lineHeight: 1.5, display: 'flex', gap: 8 }}>
+      <span style={{ flex: 'none' }}>💡</span><span>{children}</span>
+    </div>
   )
 }
 
