@@ -75,6 +75,70 @@ export function estimateCompat(f, breeds, limit = 6) {
     .slice(0, limit)
 }
 
+/* ---------------- Compatibilité adoption (top races + raison) ---------------- */
+
+export const ADOPTION_FIELDS = [
+  { k: 'Logement', options: ['Appartement', 'Maison'] },
+  { k: 'Jardin', options: ['Non', 'Oui'] },
+  { k: 'Enfants', options: ['Non', 'Oui'] },
+  { k: 'Autres animaux', options: ['Aucun', 'Chat', 'Chien'] },
+  { k: 'Temps disponible', options: ['< 1 h / jour', '≈ 2 h / jour', '> 3 h / jour'] },
+]
+
+export const ADOPTION_DEFAULTS = {
+  Logement: 'Appartement',
+  Jardin: 'Non',
+  Enfants: 'Oui',
+  'Autres animaux': 'Chat',
+  'Temps disponible': '≈ 2 h / jour',
+}
+
+function adoptionCapacity(f) {
+  const temps = { '< 1 h / jour': 30, '≈ 2 h / jour': 55, '> 3 h / jour': 85 }[f['Temps disponible']] ?? 55
+  const logement = f.Logement === 'Maison' ? 6 : -8
+  const jardin = f.Jardin === 'Oui' ? 12 : 0
+  return clamp(temps + logement + jardin)
+}
+
+export function scoreAdoption(breed, f) {
+  const energy = traitValue(breed, 'energie') ?? 50
+  const socia = traitValue(breed, 'sociab') ?? 50
+  const educ = traitValue(breed, 'facilit') ?? 50
+  const cap = adoptionCapacity(f)
+
+  let score = 100
+  if (energy > cap) score -= (energy - cap) * 0.7
+  if (f.Enfants === 'Oui') score -= (100 - socia) * 0.25
+  if (f['Autres animaux'] && f['Autres animaux'] !== 'Aucun') score -= (100 - socia) * 0.2
+  if (f.Logement === 'Appartement' && energy > 60) score -= (energy - 60) * 0.25
+  return clamp(score)
+}
+
+// Courte raison expliquant l'adéquation d'une race au foyer décrit.
+function adoptionReason(breed, f) {
+  const energy = traitValue(breed, 'energie') ?? 50
+  const socia = traitValue(breed, 'sociab') ?? 50
+  const educ = traitValue(breed, 'facilit') ?? 50
+  const entretien = traitValue(breed, 'entretien') ?? 50
+  const parts = []
+  if (energy < 45 && f.Logement === 'Appartement') parts.push("calme, adapté à l'appartement")
+  else if (energy < 45) parts.push('tempérament posé')
+  else if (energy > 70) parts.push('énergique et sportif')
+  if (socia >= 70) parts.push(f.Enfants === 'Oui' ? 'sociable avec les enfants' : 'très sociable')
+  if (educ >= 65) parts.push('facile à éduquer')
+  if (entretien < 45) parts.push('entretien réduit')
+  return (parts.slice(0, 2).join(', ') || 'bon équilibre pour votre foyer').replace(/^./, (c) => c.toUpperCase())
+}
+
+// Top des races à adopter pour le foyer décrit : { name, pct, reason }.
+export function estimateAdoption(f, breeds, limit = 5) {
+  return breeds
+    .filter((b) => Array.isArray(b.traits) && b.traits.length)
+    .map((b) => ({ name: b.nom, pct: scoreAdoption(b, f), reason: adoptionReason(b, f) }))
+    .sort((a, b) => b.pct - a.pct)
+    .slice(0, limit)
+}
+
 // Phrase de synthèse référant la meilleure et la moins bonne race affichées.
 export function summarize(results) {
   if (!results.length) return 'Ajoutez des races au catalogue pour estimer votre compatibilité.'

@@ -3,16 +3,9 @@ import { C, serif } from '../theme'
 import { Screen, Intro, SectionLabel, PrimaryButton, OutlineButton, TipNote, Bar } from '../components/ui'
 import { AIPanel } from '../components/ai'
 import { useBreeds } from '../store/BreedsContext'
-import { NF, COMPAT, SIM, COMPAT_FIELDS } from '../data/datasets'
+import { NF, SIM } from '../data/datasets'
 import { INSTRUCTIONS } from '../lib/prompts'
-import { LIFESTYLE_FIELDS, LIFESTYLE_DEFAULTS, estimateCompat, summarize } from '../lib/lifestyle'
-
-const PillField = ({ k, v }) => (
-  <div style={{ background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-    <div style={{ fontSize: 14, fontWeight: 500 }}>{k}</div>
-    <div style={{ fontSize: 13, fontWeight: 600, color: C.onAccent, background: C.accent, borderRadius: 999, padding: '6px 13px', textAlign: 'right' }}>{v}</div>
-  </div>
-)
+import { LIFESTYLE_FIELDS, LIFESTYLE_DEFAULTS, estimateCompat, summarize, ADOPTION_FIELDS, ADOPTION_DEFAULTS, estimateAdoption } from '../lib/lifestyle'
 
 /* ---------------- Mode de vie (Rapport dynamique) ---------------- */
 const lifestyleSelectStyle = { width: '100%', border: `1px solid ${C.cardBorder}`, background: '#FAF4EA', borderRadius: 10, padding: '11px 12px', fontSize: 15, fontWeight: 600, color: C.espresso, outline: 'none', marginTop: 4 }
@@ -80,39 +73,64 @@ export function Lifestyle() {
   )
 }
 
-/* ---------------- Compatibilité adoption (Rapport) ---------------- */
+/* ---------------- Compatibilité adoption (Rapport dynamique) ---------------- */
 export function Compat() {
+  const { breeds } = useBreeds()
   const [done, setDone] = useState(false)
+  const [fields, setFields] = useState(ADOPTION_DEFAULTS)
+  const [results, setResults] = useState([])
+  const set = (k) => (e) => setFields((s) => ({ ...s, [k]: e.target.value }))
+  const fieldsLine = ADOPTION_FIELDS.map((f) => `${f.k}: ${fields[f.k]}`).join(', ')
+  const scoreCol = (pct) => (pct >= 80 ? C.successDk2 : pct >= 60 ? C.warn : C.danger)
+
+  const generate = () => { setResults(estimateAdoption(fields, breeds)); setDone(true) }
+
   if (!done) {
     return (
       <Screen>
-        <Intro>Décrivez votre mode de vie pour découvrir les races les plus adaptées.</Intro>
+        <Intro>Décrivez votre mode de vie pour découvrir les races les plus adaptées du catalogue.</Intro>
         <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {COMPAT_FIELDS.map((f) => <PillField key={f.k} k={f.k} v={f.v} />)}
+          {ADOPTION_FIELDS.map((f) => (
+            <label key={f.k} style={{ display: 'block', background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: '12px 14px' }}>
+              <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: C.label, fontWeight: 600 }}>{f.k}</div>
+              <select style={lifestyleSelectStyle} value={fields[f.k]} onChange={set(f.k)}>
+                {f.options.map((o) => <option key={o}>{o}</option>)}
+              </select>
+            </label>
+          ))}
         </div>
-        <div style={{ marginTop: 18 }}><PrimaryButton onClick={() => setDone(true)}>Trouver mes races</PrimaryButton></div>
+        <div style={{ marginTop: 18 }}><PrimaryButton onClick={generate}>Trouver mes races</PrimaryButton></div>
       </Screen>
     )
   }
   return (
     <Screen>
-      <SectionLabel style={{ marginBottom: 14 }}>Top 5 pour votre mode de vie</SectionLabel>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {COMPAT.map((c, i) => (
-          <div key={c[0]} style={{ display: 'flex', alignItems: 'center', gap: 14, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 16, padding: 14 }}>
-            <div style={{ fontFamily: serif, fontSize: 24, color: C.grayA, width: 24, textAlign: 'center', flex: 'none' }}>{i + 1}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 15, fontWeight: 600 }}>{c[0]}</div>
-              <div style={{ fontSize: 12.5, color: C.label, marginTop: 2, lineHeight: 1.35 }}>{c[2]}</div>
-            </div>
-            <div style={{ textAlign: 'center', flex: 'none' }}>
-              <div style={{ fontFamily: serif, fontSize: 20 }}>{c[1]}</div>
-              <div style={{ fontSize: 9, color: C.label, letterSpacing: '.05em' }}>SCORE</div>
-            </div>
-          </div>
+      <SectionLabel style={{ marginBottom: 10 }}>Top {results.length || 5} pour votre mode de vie</SectionLabel>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+        {ADOPTION_FIELDS.map((f) => (
+          <span key={f.k} style={{ fontSize: 11.5, color: C.body, background: C.tile, borderRadius: 999, padding: '5px 10px' }}>{f.k} : <b style={{ fontWeight: 600 }}>{fields[f.k]}</b></span>
         ))}
       </div>
-      <div style={{ marginTop: 18 }}><AIPanel buildInstruction={() => INSTRUCTIONS.compat(COMPAT_FIELDS.map((f) => `${f.k}: ${f.v}`).join(', '))} /></div>
+      {results.length ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {results.map((c, i) => (
+            <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 14, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 16, padding: 14 }}>
+              <div style={{ fontFamily: serif, fontSize: 24, color: C.grayA, width: 24, textAlign: 'center', flex: 'none' }}>{i + 1}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 600 }}>{c.name}</div>
+                <div style={{ fontSize: 12.5, color: C.label, marginTop: 2, lineHeight: 1.35 }}>{c.reason}</div>
+              </div>
+              <div style={{ textAlign: 'center', flex: 'none' }}>
+                <div style={{ fontFamily: serif, fontSize: 20, color: scoreCol(c.pct) }}>{c.pct}</div>
+                <div style={{ fontSize: 9, color: C.label, letterSpacing: '.05em' }}>SCORE</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ fontSize: 13.5, color: C.label, lineHeight: 1.5 }}>Aucune race chiffrée dans le catalogue. Ajoutez-en pour obtenir un classement.</div>
+      )}
+      <div style={{ marginTop: 18 }}><AIPanel buildInstruction={() => INSTRUCTIONS.compat(fieldsLine)} label="Conseils détaillés avec l'IA" /></div>
       <div style={{ marginTop: 16 }}><OutlineButton onClick={() => setDone(false)}>Modifier mes critères</OutlineButton></div>
     </Screen>
   )
