@@ -11,7 +11,7 @@ import { BEHAVIOR, PSYQ, PSYRESULT, NF, TRANSLATE_SIGNALS } from '../data/datase
 import { INSTRUCTIONS } from '../lib/prompts'
 import { loadCase, saveCase, parseCase } from '../lib/behaviorCache'
 
-const EXTRA_CASES = ['Agressivité', 'Destruction', 'Peur des inconnus']
+const EXTRA_CASES = ['Léchage compulsif', 'Vol de nourriture', 'Réveils nocturnes', 'Pica (ingestion d’objets)']
 
 /* ---------------- Assistant comportement (Explainer) ---------------- */
 export function Behavior() {
@@ -20,16 +20,16 @@ export function Behavior() {
   const b = BEHAVIOR[i]
   return (
     <Screen>
-      <Intro>Choisissez un cas ou décrivez le vôtre. L'IA analyse l'âge, la race et le contexte.</Intro>
+      <Intro>Choisissez un cas (causes, exercices, erreurs à éviter — sans IA) ou décrivez le vôtre. Approfondissez ensuite avec l'IA si besoin.</Intro>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
         {BEHAVIOR.map((c, idx) => (
-          <Chip key={c.case} active={idx === i && !extra} onClick={() => { setI(idx); setExtra(null) }}>{c.case}</Chip>
+          <Chip key={c.case} active={idx === i && !extra} onClick={() => { setI(idx); setExtra(null) }} style={{ fontSize: 12.5, padding: '7px 12px' }}>{c.case}</Chip>
         ))}
       </div>
 
-      <CaseCard title={b.case} ctx={b.ctx} causes={b.causes} exos={b.exos} avoid={b.avoid} />
+      {!extra && <CaseCard title={b.case} ctx={b.ctx} causes={b.causes} exos={b.exos} avoid={b.avoid} />}
 
-      <SectionLabel style={{ marginTop: 16, marginBottom: 8 }}>Autres cas traités</SectionLabel>
+      <SectionLabel style={{ marginTop: 16, marginBottom: 8 }}>Autres cas (générés par l'IA)</SectionLabel>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {EXTRA_CASES.map((e) => (
           <Chip key={e} active={extra === e} dashed={extra !== e} style={{ fontSize: 12, padding: '7px 12px' }}
