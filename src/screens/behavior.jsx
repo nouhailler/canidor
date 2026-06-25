@@ -14,6 +14,7 @@ import { loadCase, saveCase, parseCase } from '../lib/behaviorCache'
 import { PSY_QUESTIONS, computeProfile, dimQualifier, profileSummary } from '../lib/psyProfile'
 import { pickVideoFile, extractFrames } from '../lib/videoFrames'
 import { BODYLANG_FIELDS, BODYLANG_DEFAULTS, buildDescription } from '../lib/bodylang'
+import { WHY_CATEGORIES, WHY_STATIC } from '../data/whyQuestions'
 
 const EXTRA_CASES = ['Léchage compulsif', 'Vol de nourriture', 'Réveils nocturnes', 'Pica (ingestion d’objets)']
 
@@ -418,32 +419,64 @@ export function Bodylang() {
   )
 }
 
-/* ---------------- Pourquoi mon chien ? (Explainer) ---------------- */
+/* ---------------- Pourquoi mon chien ? (Explainer · catalogue catégorisé) ---------------- */
+const whySelect = { width: '100%', border: `1px solid ${C.cardBorder}`, background: '#FAF4EA', borderRadius: 12, padding: '12px 14px', fontSize: 15, fontWeight: 600, color: C.espresso, outline: 'none' }
+
 export function Whydog() {
-  const [i, setI] = useState(0)
-  const cases = NF.why.cases
-  const c = cases[i]
+  const [catIdx, setCatIdx] = useState(0)
+  const [q, setQ] = useState(WHY_CATEGORIES[0].questions[0])
+  const [custom, setCustom] = useState('')
+  const cat = WHY_CATEGORIES[catIdx]
+  const info = WHY_STATIC[q]
+
+  const pickCat = (idx) => { setCatIdx(idx); setQ(WHY_CATEGORIES[idx].questions[0]) }
+  const askCustom = () => { const t = custom.trim(); if (t) { setQ(t); setCustom('') } }
+
   return (
     <Screen>
-      <Intro>Choisissez une question fréquente — ou décrivez la vôtre.</Intro>
+      <Intro>Choisissez une situation, puis une question — ou décrivez la vôtre. L'IA explique l'origine du comportement.</Intro>
+
+      <div style={{ marginTop: 14, fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: C.label, fontWeight: 600, marginBottom: 6 }}>Type de situation</div>
+      <select style={whySelect} value={catIdx} onChange={(e) => pickCat(Number(e.target.value))}>
+        {WHY_CATEGORIES.map((c, i) => <option key={c.cat} value={i}>{c.icon} {c.cat}</option>)}
+      </select>
+
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
-        {cases.map((x, idx) => <Chip key={x.q} active={idx === i} onClick={() => setI(idx)} style={{ fontSize: 12.5, padding: '9px 13px' }}>{x.q}</Chip>)}
+        {cat.questions.map((qq) => (
+          <Chip key={qq} active={qq === q} onClick={() => setQ(qq)} style={{ fontSize: 12.5, padding: '9px 13px' }}>{qq}</Chip>
+        ))}
       </div>
+
+      <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+        <input value={custom} onChange={(e) => setCustom(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && askCustom()}
+          placeholder="Ou décrivez votre situation…"
+          style={{ flex: 1, border: `1px solid ${C.cardBorder}`, background: '#FAF4EA', borderRadius: 12, padding: '11px 14px', fontSize: 14, color: C.espresso, outline: 'none' }} />
+        <button className="reset" disabled={!custom.trim()} onClick={askCustom} style={{ flex: 'none', borderRadius: 12, padding: '0 16px', fontWeight: 600, fontSize: 14, cursor: custom.trim() ? 'pointer' : 'default', background: C.accent, color: C.onAccent, opacity: custom.trim() ? 1 : 0.5 }}>OK</button>
+      </div>
+
       <div style={{ marginTop: 18, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 18, padding: 18 }}>
-        <div style={{ fontFamily: serif, fontSize: 23, lineHeight: 1.2 }}>« {c.q} »</div>
-        <div style={{ marginTop: 16, fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: C.label, fontWeight: 600, marginBottom: 6 }}>Origine comportementale</div>
-        <div style={{ fontSize: 14, color: C.body, lineHeight: 1.55 }}>{c.origin}</div>
-        <div style={{ marginTop: 16, background: C.successBg, borderRadius: 12, padding: 13 }}>
-          <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: C.successDk, fontWeight: 700 }}>Fréquence</div>
-          <div style={{ fontSize: 13, color: C.successDk2, marginTop: 4, lineHeight: 1.4 }}>{c.freq}</div>
-        </div>
-        <div style={{ marginTop: 10, background: C.dangerBg, borderRadius: 12, padding: 13 }}>
-          <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: C.danger, fontWeight: 700 }}>Signe d'alerte</div>
-          <div style={{ fontSize: 13, color: C.danger, marginTop: 4, lineHeight: 1.4 }}>{c.alert}</div>
-        </div>
+        <div style={{ fontFamily: serif, fontSize: 22, lineHeight: 1.25 }}>« {q} »</div>
+        {info ? (
+          <>
+            <div style={{ marginTop: 16, fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: C.label, fontWeight: 600, marginBottom: 6 }}>Origine comportementale</div>
+            <div style={{ fontSize: 14, color: C.body, lineHeight: 1.55 }}>{info.origin}</div>
+            <div style={{ marginTop: 16, background: C.successBg, borderRadius: 12, padding: 13 }}>
+              <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: C.successDk, fontWeight: 700 }}>Fréquence</div>
+              <div style={{ fontSize: 13, color: C.successDk2, marginTop: 4, lineHeight: 1.4 }}>{info.freq}</div>
+            </div>
+            <div style={{ marginTop: 10, background: C.dangerBg, borderRadius: 12, padding: 13 }}>
+              <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: C.danger, fontWeight: 700 }}>Signe d'alerte</div>
+              <div style={{ fontSize: 13, color: C.danger, marginTop: 4, lineHeight: 1.4 }}>{info.alert}</div>
+            </div>
+          </>
+        ) : (
+          <div style={{ marginTop: 10, fontSize: 13, color: C.label, lineHeight: 1.5 }}>Touchez « Demander à l'IA » pour l'origine comportementale, si c'est normal, et le signe d'alerte éventuel.</div>
+        )}
       </div>
-      <div style={{ marginTop: 16 }}><AIPanel buildInstruction={() => INSTRUCTIONS.whydog(c.q)} label="Demander à l'IA" /></div>
-      <InputBar placeholder="Décrire un autre comportement…" />
+
+      <div style={{ marginTop: 16 }}>
+        <AIPanel key={q} buildInstruction={() => INSTRUCTIONS.whydog(q)} label="Demander à l'IA" />
+      </div>
     </Screen>
   )
 }
