@@ -10,6 +10,7 @@ import { chatCompletion } from '../lib/openrouter'
 import { loadInfo as loadBreedInfo, saveInfo as saveBreedInfo, removeInfo as removeBreedInfo } from '../lib/breedInfoCache'
 import { loadInfo as loadHealthInfo, saveInfo as saveHealthInfo, removeInfo as removeHealthInfo } from '../lib/healthInfoCache'
 import { loadInfo as loadScreeningInfo, saveInfo as saveScreeningInfo, removeInfo as removeScreeningInfo } from '../lib/screeningInfoCache'
+import { loadScreenings, saveScreenings, removeScreenings, parseScreenings } from '../lib/breedScreeningsCache'
 import { breedRange, traitValue, metricBounds, breedMatches } from '../lib/breedFilters'
 import { NF, COMPAT_FIELDS, IDENTIFY_RESULT } from '../data/datasets'
 import { useBreeds } from '../store/BreedsContext'
@@ -1081,53 +1082,60 @@ export function Worldmap() {
   )
 }
 
-/* ---------------- Maladies génétiques (Calcul/Info) ---------------- */
+/* ---------------- Maladies génétiques (dynamique, par race du catalogue) ---------------- */
+const vigilanceLabel = (n) => (n >= 4 ? 'Élevée' : n >= 2 ? 'Modérée' : n === 1 ? 'Faible' : '—')
+
 export function Genetics() {
-  const [bi, setBi] = useState(0)
+  const { dog } = useApp()
+  const { breeds } = useBreeds()
+  const initial = Math.max(0, findBreedIndex(breeds, dog.race))
+  const [sel, setSel] = useState(initial)
   const [info, setInfo] = useState(null) // { kind: 'affection'|'depistage', name }
-  const g = NF.genetics
-  const sel = g.breeds[bi]
-  const data = g.data[sel]
-  const riskCol = (lvl) => (lvl === 'Fréquent' ? C.danger : lvl === 'Modéré' ? C.warn : C.successDk)
+
+  if (!breeds.length) {
+    return <Screen><Intro>Prédispositions héréditaires et dépistages conseillés par race.</Intro><div style={{ marginTop: 20, fontSize: 13.5, color: C.label }}>Ajoutez des races au catalogue pour consulter leurs maladies génétiques.</div></Screen>
+  }
+
+  const breed = breeds[Math.min(sel, breeds.length - 1)]
+  const affections = Array.isArray(breed.sante) ? breed.sante : []
 
   return (
     <Screen>
-      <Intro>Prédispositions héréditaires et dépistages conseillés par race. Touchez une race pour son profil de vigilance.</Intro>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
-        {g.breeds.map((b, i) => <Chip key={b} active={i === bi} onClick={() => setBi(i)} style={{ padding: '8px 13px', fontSize: 12.5 }}>{b}</Chip>)}
-      </div>
-      <div style={{ marginTop: 18, background: C.espresso, color: C.cream, borderRadius: 18, padding: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <Intro>Prédispositions héréditaires et dépistages conseillés. Choisissez une race du catalogue ({breeds.length}).</Intro>
+
+      <div style={{ marginTop: 14, fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: C.label, fontWeight: 600, marginBottom: 6 }}>Race</div>
+      <select style={ficheSelectStyle} value={Math.min(sel, breeds.length - 1)} onChange={(e) => { setSel(Number(e.target.value)); setInfo(null) }}>
+        {breeds.map((b, i) => <option key={b.id} value={i}>{b.nom}</option>)}
+      </select>
+
+      <div style={{ marginTop: 16, background: C.espresso, color: C.cream, borderRadius: 18, padding: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: C.faint, fontWeight: 600 }}>Profil de vigilance</div>
-          <div style={{ fontFamily: serif, fontSize: 24, marginTop: 4 }}>{sel}</div>
+          <div style={{ fontFamily: serif, fontSize: 24, marginTop: 4 }}>{breed.nom}</div>
         </div>
-        <div style={{ fontSize: 13, fontWeight: 700, border: '1px solid #5A4636', borderRadius: 999, padding: '7px 14px' }}>{data.vig}</div>
+        <div style={{ fontSize: 13, fontWeight: 700, border: '1px solid #5A4636', borderRadius: 999, padding: '7px 14px' }}>{vigilanceLabel(affections.length)}</div>
       </div>
 
       <SectionLabel style={{ marginTop: 20, marginBottom: 6 }}>Affections prédisposées</SectionLabel>
-      <div style={{ fontSize: 11.5, color: C.label, marginBottom: 10 }}>Touchez une affection pour une explication détaillée par l'IA.</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {data.risks.map((r) => (
-          <button key={r[0]} className="reset hoverable" onClick={() => setInfo({ kind: 'affection', name: r[0] })} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: 14, cursor: 'pointer' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: riskCol(r[1]), flex: 'none' }} />
-            <div style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{r[0]}</div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: riskCol(r[1]) }}>{r[1]}</div>
-            <span style={{ fontSize: 16, color: C.grayA, flex: 'none' }}>›</span>
-          </button>
-        ))}
-      </div>
+      {affections.length ? (
+        <>
+          <div style={{ fontSize: 11.5, color: C.label, marginBottom: 10 }}>Touchez une affection pour une explication détaillée par l'IA.</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {affections.map((name) => (
+              <button key={name} className="reset hoverable" onClick={() => setInfo({ kind: 'affection', name })} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: 14, cursor: 'pointer' }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: C.danger, flex: 'none' }} />
+                <div style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{name}</div>
+                <span style={{ fontSize: 16, color: C.grayA, flex: 'none' }}>›</span>
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div style={{ fontSize: 13, color: C.label, lineHeight: 1.5 }}>Aucune prédisposition renseignée dans la fiche de cette race. Vous pouvez l'enrichir depuis le Catalogue (génération IA / édition).</div>
+      )}
 
-      <SectionLabel style={{ marginTop: 20, marginBottom: 6 }}>Dépistages conseillés</SectionLabel>
-      <div style={{ fontSize: 11.5, color: C.label, marginBottom: 10 }}>Touchez un dépistage pour en savoir plus avec l'IA.</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {data.tests.map((t) => (
-          <button key={t} className="reset hoverable" onClick={() => setInfo({ kind: 'depistage', name: t })} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 12, padding: '12px 14px', fontSize: 13.5, cursor: 'pointer' }}>
-            <span style={{ color: C.successDk, flex: 'none' }}>🔬</span>
-            <span style={{ flex: 1 }}>{t}</span>
-            <span style={{ fontSize: 16, color: C.grayA, flex: 'none' }}>›</span>
-          </button>
-        ))}
-      </div>
+      <SectionLabel style={{ marginTop: 22, marginBottom: 6 }}>Dépistages conseillés</SectionLabel>
+      <BreedScreenings key={breed.nom} breed={breed} onOpen={(name) => setInfo({ kind: 'depistage', name })} />
 
       <div style={{ marginTop: 16 }}>
         <VetDisclaimer>Une prédisposition n'est pas une fatalité. Seul un vétérinaire peut établir un diagnostic.</VetDisclaimer>
@@ -1137,9 +1145,9 @@ export function Genetics() {
         <AIInfoSheet
           key={`a-${info.name}`}
           title={info.name}
-          subtitle={`Affection prédisposée · ${sel}`}
+          subtitle={`Affection prédisposée · ${breed.nom}`}
           dotColor={C.danger}
-          instruction={INSTRUCTIONS.healthCondition(info.name, sel)}
+          instruction={INSTRUCTIONS.healthCondition(info.name, breed.nom)}
           cacheLoad={() => loadHealthInfo(info.name)}
           cacheSave={(t) => saveHealthInfo(info.name, t)}
           cacheRemove={() => removeHealthInfo(info.name)}
@@ -1150,9 +1158,9 @@ export function Genetics() {
         <AIInfoSheet
           key={`d-${info.name}`}
           title={info.name}
-          subtitle={`Dépistage conseillé · ${sel}`}
+          subtitle={`Dépistage conseillé · ${breed.nom}`}
           dotColor={C.successDk}
-          instruction={INSTRUCTIONS.screeningTest(info.name, sel)}
+          instruction={INSTRUCTIONS.screeningTest(info.name, breed.nom)}
           cacheLoad={() => loadScreeningInfo(info.name)}
           cacheSave={(t) => saveScreeningInfo(info.name, t)}
           cacheRemove={() => removeScreeningInfo(info.name)}
@@ -1160,5 +1168,58 @@ export function Genetics() {
         />
       )}
     </Screen>
+  )
+}
+
+// Dépistages conseillés générés par l'IA pour une race (liste mise en cache).
+// Chaque dépistage est cliquable pour une explication détaillée.
+function BreedScreenings({ breed, onOpen }) {
+  const { aiReady, orKey, orModel, dog } = useApp()
+  const [text, setText] = useState(() => loadScreenings(breed.nom))
+  const [saved, setSaved] = useState(() => !!loadScreenings(breed.nom))
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const items = parseScreenings(text || '')
+
+  const generate = async () => {
+    if (!aiReady || loading) return
+    setLoading(true); setError('')
+    try {
+      const out = await chatCompletion({ key: orKey, model: orModel, messages: buildMessages({ dog, instruction: INSTRUCTIONS.breedScreenings(breed.nom) }) })
+      setText(out); setSaved(false)
+    } catch (e) {
+      setError(e.message || 'Échec de la génération.')
+    } finally {
+      setLoading(false)
+    }
+  }
+  const save = () => { saveScreenings(breed.nom, text); setSaved(true) }
+  const forget = () => { removeScreenings(breed.nom); setText(null); setSaved(false) }
+
+  if (!items.length && !aiReady) return <div style={{ marginTop: 4 }}><ConnectKeyNote /></div>
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {!!items.length && <div style={{ fontSize: 11.5, color: C.label, marginBottom: 2 }}>Touchez un dépistage pour en savoir plus avec l'IA.</div>}
+      {items.map((t) => (
+        <button key={t} className="reset hoverable" onClick={() => onOpen(t)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 12, padding: '12px 14px', fontSize: 13.5, cursor: 'pointer' }}>
+          <span style={{ color: C.successDk, flex: 'none' }}>🔬</span>
+          <span style={{ flex: 1 }}>{t}</span>
+          <span style={{ fontSize: 16, color: C.grayA, flex: 'none' }}>›</span>
+        </button>
+      ))}
+
+      {error && <div style={{ fontSize: 12.5, color: C.danger, lineHeight: 1.5 }}>⚠ {error}</div>}
+
+      {aiReady && (
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 2 }}>
+          <button className="reset" disabled={loading} onClick={generate} style={{ flex: 1, border: `1px solid ${C.grayB}`, borderRadius: 999, padding: 12, textAlign: 'center', fontWeight: 600, fontSize: 13.5, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.6 : 1, minHeight: 44 }}>
+            {loading ? 'Analyse en cours…' : items.length ? '↻ Régénérer' : '✨ Proposer les dépistages (IA)'}
+          </button>
+          {!!items.length && !saved && <button className="reset" onClick={save} style={{ flex: 'none', borderRadius: 999, padding: '12px 16px', fontWeight: 600, fontSize: 13.5, cursor: 'pointer', background: C.espresso, color: C.cream }}>💾</button>}
+          {saved && <button className="reset" onClick={forget} style={{ flex: 'none', fontSize: 13, fontWeight: 600, color: C.danger, cursor: 'pointer' }}>Oublier</button>}
+        </div>
+      )}
+    </div>
   )
 }

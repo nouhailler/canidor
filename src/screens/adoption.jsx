@@ -139,67 +139,63 @@ export function Compat() {
 }
 
 /* ---------------- Compatibilité entre chiens (Rapport dynamique) ---------------- */
-const dcInput = { width: '100%', border: `1px solid ${C.cardBorder}`, background: '#FAF4EA', borderRadius: 10, padding: '11px 12px', fontSize: 15, color: C.espresso, outline: 'none', marginTop: 4 }
+const dcInput = { width: '100%', border: `1px solid ${C.cardBorder}`, background: '#FAF4EA', borderRadius: 10, padding: '10px 11px', fontSize: 14, color: C.espresso, outline: 'none', marginTop: 4 }
 const dcLabel = { fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: C.label, fontWeight: 600 }
+
+// Éditeur d'un chien (race au choix dans le catalogue + sexe, âge, tempérament).
+function DogEditor({ title, dog, onChange, raceNames }) {
+  const set = (k) => (e) => onChange({ ...dog, [k]: e.target.value })
+  return (
+    <div style={{ flex: 1, minWidth: 0, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 16, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: C.accent, fontWeight: 700, textAlign: 'center' }}>{title}</div>
+      <label><div style={dcLabel}>Nom</div><input style={dcInput} value={dog.nom} onChange={set('nom')} placeholder="Optionnel" /></label>
+      <label><div style={dcLabel}>Race</div>
+        <select style={dcInput} value={dog.race} onChange={set('race')}>
+          {raceNames.map((n) => <option key={n}>{n}</option>)}
+        </select>
+      </label>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <label style={{ flex: 1 }}><div style={dcLabel}>Sexe</div>
+          <select style={dcInput} value={dog.sexe} onChange={set('sexe')}><option>Mâle</option><option>Femelle</option></select>
+        </label>
+        <label style={{ width: 76, flex: 'none' }}><div style={dcLabel}>Âge</div>
+          <input type="number" min="0" style={dcInput} value={dog.age} onChange={set('age')} />
+        </label>
+      </div>
+      <label><div style={dcLabel}>Tempérament</div>
+        <select style={dcInput} value={dog.temperament} onChange={set('temperament')}>{TEMPERAMENTS.map((t) => <option key={t}>{t}</option>)}</select>
+      </label>
+    </div>
+  )
+}
 
 export function Dogcompat() {
   const { dog } = useApp()
   const { breeds } = useBreeds()
-  const [done, setDone] = useState(false)
-  const [b, setB] = useState({ nom: '', race: '', sexe: 'Femelle', age: 3, temperament: 'Équilibré' })
-  const [res, setRes] = useState(null)
-  const setF = (k) => (e) => setB((s) => ({ ...s, [k]: e.target.value }))
-
-  const a = { nom: dog.nom, race: dog.race, sexe: dog.sexe, age: dog.ageAnnees }
-  const bName = b.nom.trim() || 'l’autre chien'
   const raceNames = breeds.map((br) => br.nom)
+  // Côté A : pré-rempli avec le chien du profil si sa race est au catalogue.
+  const profileRace = raceNames.includes(dog.race) ? dog.race : (raceNames[0] || '')
+  const otherRace = raceNames.find((n) => n !== profileRace) || profileRace || ''
 
-  const generate = () => { setRes(estimateDogCompat(a, { ...b, nom: bName }, breeds)); setDone(true) }
+  const [a, setA] = useState({ nom: dog.nom || '', race: profileRace, sexe: dog.sexe || 'Mâle', age: dog.ageAnnees ?? 3, temperament: 'Équilibré' })
+  const [b, setB] = useState({ nom: '', race: otherRace, sexe: 'Femelle', age: 3, temperament: 'Équilibré' })
+  const [res, setRes] = useState(null)
+  const [done, setDone] = useState(false)
+
+  const generate = () => { setRes(estimateDogCompat(a, b, breeds)); setDone(true) }
   const col = (pct) => (pct >= 80 ? C.successDk2 : pct >= 60 ? C.warn : C.danger)
+
+  if (!raceNames.length) {
+    return <Screen><Intro>Comparez deux chiens pour estimer leur entente.</Intro><div style={{ marginTop: 20, fontSize: 13.5, color: C.label }}>Ajoutez des races au catalogue pour comparer deux chiens.</div></Screen>
+  }
 
   if (!done) {
     return (
       <Screen>
-        <Intro>Comparez {dog.nom} à un autre chien pour estimer leur entente.</Intro>
-        <div style={{ marginTop: 18, display: 'flex', gap: 10, alignItems: 'center' }}>
-          <div style={{ flex: 1, background: C.espresso, color: C.cream, borderRadius: 16, padding: 16, textAlign: 'center' }}>
-            <div style={{ fontSize: 10, letterSpacing: '.05em', textTransform: 'uppercase', color: C.faint }}>Chien A · vous</div>
-            <div style={{ fontSize: 16, fontWeight: 600, marginTop: 4 }}>{dog.nom}</div>
-            <div style={{ fontSize: 11.5, color: C.label, marginTop: 2 }}>{dog.race} · {dog.sexe} · {dog.ageAnnees} ans</div>
-          </div>
-          <div style={{ fontSize: 13, color: C.label, fontWeight: 600 }}>vs</div>
-          <div style={{ flex: 1, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 16, padding: 16, textAlign: 'center' }}>
-            <div style={{ fontSize: 10, letterSpacing: '.05em', textTransform: 'uppercase', color: C.label }}>Chien B</div>
-            <div style={{ fontSize: 16, fontWeight: 600, marginTop: 4 }}>{b.nom.trim() || '—'}</div>
-            <div style={{ fontSize: 11.5, color: C.label, marginTop: 2 }}>{b.race || 'race ?'} · {b.sexe} · {b.age} ans</div>
-          </div>
-        </div>
-
-        <SectionLabel style={{ marginTop: 18, marginBottom: 10 }}>Profil du chien B</SectionLabel>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <label style={{ display: 'block', background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: '12px 14px' }}>
-            <div style={dcLabel}>Nom</div>
-            <input style={dcInput} value={b.nom} onChange={setF('nom')} placeholder="Ex. Luna" />
-          </label>
-          <label style={{ display: 'block', background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: '12px 14px' }}>
-            <div style={dcLabel}>Race</div>
-            <input style={dcInput} value={b.race} onChange={setF('race')} placeholder="Ex. Labrador" list="dc-races" />
-            <datalist id="dc-races">{raceNames.map((n) => <option key={n} value={n} />)}</datalist>
-          </label>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <label style={{ flex: 1, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: '12px 14px' }}>
-              <div style={dcLabel}>Sexe</div>
-              <select style={dcInput} value={b.sexe} onChange={setF('sexe')}><option>Mâle</option><option>Femelle</option></select>
-            </label>
-            <label style={{ flex: 1, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: '12px 14px' }}>
-              <div style={dcLabel}>Âge (ans)</div>
-              <input type="number" min="0" style={dcInput} value={b.age} onChange={setF('age')} />
-            </label>
-          </div>
-          <label style={{ display: 'block', background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: '12px 14px' }}>
-            <div style={dcLabel}>Tempérament</div>
-            <select style={dcInput} value={b.temperament} onChange={setF('temperament')}>{TEMPERAMENTS.map((t) => <option key={t}>{t}</option>)}</select>
-          </label>
+        <Intro>Choisissez deux chiens (race, sexe, âge, tempérament) pour estimer leur entente. Calcul local, sans IA.</Intro>
+        <div style={{ marginTop: 16, display: 'flex', gap: 10, alignItems: 'stretch' }}>
+          <DogEditor title="Chien A" dog={a} onChange={setA} raceNames={raceNames} />
+          <DogEditor title="Chien B" dog={b} onChange={setB} raceNames={raceNames} />
         </div>
         <div style={{ marginTop: 18 }}><PrimaryButton onClick={generate}>Estimer la compatibilité</PrimaryButton></div>
       </Screen>
@@ -209,7 +205,8 @@ export function Dogcompat() {
     <Screen>
       <div style={{ background: C.espresso, color: C.cream, borderRadius: 22, padding: 24, textAlign: 'center' }}>
         <div style={{ fontFamily: serif, fontSize: 54, lineHeight: 1, color: col(res.score) }}>{res.score}%</div>
-        <div style={{ fontSize: 14, color: C.label, marginTop: 6 }}>{res.verdict} · {a.nom} & {bName}</div>
+        <div style={{ fontSize: 14, color: C.label, marginTop: 6 }}>{res.verdict} · {res.names.a} & {res.names.b}</div>
+        <div style={{ fontSize: 11.5, color: C.faint, marginTop: 6 }}>{a.race} ({a.sexe}, {a.age} ans) · {b.race} ({b.sexe}, {b.age} ans)</div>
       </div>
       <SectionLabel style={{ marginTop: 22, marginBottom: 12 }}>Points d'attention</SectionLabel>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
@@ -219,8 +216,8 @@ export function Dogcompat() {
           </div>
         ))}
       </div>
-      <div style={{ marginTop: 18 }}><AIPanel buildInstruction={() => INSTRUCTIONS.dogcompat(a.nom, bName, `${b.race || 'race inconnue'}, ${b.sexe}, ${b.age} ans, tempérament ${b.temperament}`)} label="Conseils détaillés avec l'IA" /></div>
-      <div style={{ marginTop: 16 }}><OutlineButton onClick={() => setDone(false)}>Tester un autre chien</OutlineButton></div>
+      <div style={{ marginTop: 18 }}><AIPanel buildInstruction={() => INSTRUCTIONS.dogcompat(`${res.names.a} (${a.race}, ${a.sexe}, ${a.age} ans, ${a.temperament})`, res.names.b, `${b.race}, ${b.sexe}, ${b.age} ans, tempérament ${b.temperament}`)} label="Conseils détaillés avec l'IA" /></div>
+      <div style={{ marginTop: 16 }}><OutlineButton onClick={() => setDone(false)}>Modifier les chiens</OutlineButton></div>
     </Screen>
   )
 }

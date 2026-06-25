@@ -34,15 +34,19 @@ const verdictOf = (score) =>
       : score >= 45 ? 'Compatibilité modérée'
         : 'Compatibilité délicate'
 
-// a/b : { nom, race, sexe, age, temperament? }. Renvoie { score, verdict, points }.
+const nameOf = (d, fb) => (d.nom && d.nom.trim()) || fb
+
+// a/b : { nom, race, sexe, age, temperament }. Renvoie { score, verdict, points }.
 export function estimateDogCompat(a, b, breeds) {
-  const eA = energyOf(breeds, a.race)
+  const eA = energyOf(breeds, a.race, a.temperament)
   const eB = energyOf(breeds, b.race, b.temperament)
   const sA = sociaOf(breeds, a.race)
   const sB = sociaOf(breeds, b.race)
   const opposite = a.sexe && b.sexe && a.sexe !== b.sexe
   const energyGap = Math.abs(eA - eB)
   const ageGap = Math.abs((Number(a.age) || 0) - (Number(b.age) || 0))
+  const nA = nameOf(a, 'le chien A')
+  const nB = nameOf(b, 'le chien B')
 
   let score = 72
   score += opposite ? 12 : -7
@@ -50,19 +54,22 @@ export function estimateDogCompat(a, b, breeds) {
   if (energyGap < 15) score += 6
   score += (sA + sB - 100) * 0.12
   if (ageGap > 5) score -= (ageGap - 5) * 1.5
-  if (b.temperament === 'Dominant') score -= 8
-  if (b.temperament === 'Craintif') score -= 6
+  const dominants = [a, b].filter((d) => d.temperament === 'Dominant')
+  const craintifs = [a, b].filter((d) => d.temperament === 'Craintif')
+  score -= dominants.length * 8
+  score -= craintifs.length * 6
   score = clamp(score)
 
   const points = []
   points.push(opposite ? 'Sexes opposés : entente souvent facilitée.' : 'Même sexe : surveillez les rapports de dominance au début.')
   points.push(energyGap < 18 ? "Niveaux d'énergie proches : jeux équilibrés." : "Écart d'énergie marqué : un chien risque d'épuiser l'autre, prévoyez des temps calmes séparés.")
   if (sA < 45 || sB < 45) points.push('Sociabilité limitée chez l’un des deux : présentations progressives indispensables.')
-  if (b.temperament === 'Dominant') points.push(`Tempérament dominant de ${b.nom || 'l’autre chien'} : encadrez les premières interactions.`)
-  if (b.temperament === 'Craintif') points.push(`${b.nom || 'L’autre chien'} est craintif : laissez-lui le temps et une échappatoire.`)
+  if (dominants.length === 2) points.push('Deux tempéraments dominants : risque de conflit, présentations très encadrées.')
+  else if (dominants.length === 1) points.push(`Tempérament dominant de ${nameOf(dominants[0], 'l’un des chiens')} : encadrez les premières interactions.`)
+  craintifs.forEach((d) => points.push(`${nameOf(d, 'L’un des chiens')} est craintif : laissez-lui le temps et une échappatoire.`))
   if (ageGap > 5) points.push('Grand écart d’âge : respectez le rythme du plus âgé.')
   points.push('Présentez-les en terrain neutre la première fois.')
   points.push('Surveillez le partage des jouets et des gamelles au début.')
 
-  return { score, verdict: verdictOf(score), points }
+  return { score, verdict: verdictOf(score), points, names: { a: nA, b: nB } }
 }
