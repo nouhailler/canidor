@@ -48,13 +48,28 @@ parent (`home` / `tools` / `health` / `profile`). On a transposé ça en routes 
   depuis Profil → « Revoir l'introduction ».
 - **Profil chien éditable** : `dog` + `updateDog` (persisté `canidor_dog`).
   Champs : nom, race, sexe, âge, poids, forme, lof. Édité depuis l'écran Profil.
-- **OpenRouter** : `orKey`, `orStatus` (`idle|checking|valid|invalid`), `orMsg`,
-  `orModel`, `orShow`, `models`, `aiReady`, `modelName` + actions (`onKeyChange`,
-  `toggleShow`, `selectModel`, `validateKey`). Rehydraté au montage depuis
-  `localStorage` (`canidor_or_key`, `canidor_or_model`).
+- **Profil chien — photo** : `dog.photo` (data URL) + cadrage `dog.photoPos` /
+  `dog.photoZoom` (recentrage + zoom), édités depuis Profil, repris en miniature
+  d'accueil (`Avatar` accepte `src`/`pos`/`zoom`).
+- **OpenRouter** (texte) : `orKey`, `orStatus` (`idle|checking|valid|invalid`),
+  `orMsg`, `orModel`, `orShow`, `models`, `aiReady`, `modelName` + actions.
+  Rehydraté depuis `localStorage` (`canidor_or_key`, `canidor_or_model`).
+- **Fournisseur vision** (image) : `vProvider` (`openai|anthropic|google`),
+  `vKey`, `vStatus`, `vMsg`, `vModel`, `vModels`, `vShow`, `visionReady`,
+  `visionModelName` + actions (`onVKeyChange`, `selectVProvider`, `validateVKey`,
+  `selectVModel`, `toggleVShow`). Persisté (`canidor_v_provider/_key/_model`).
+- **Routeur d'analyse** : `runAnalysis({ instruction, image, images, signal })`
+  — image(s) → fournisseur vision si configuré, sinon texte via OpenRouter.
+
+Le **catalogue de races** vit dans `src/store/BreedsContext.jsx` : base
+(`BREEDS`) fusionnée avec les ajouts/overrides persistés (`canidor_breeds`),
+dédup par nom ; `setBreedImage` / `setBreedImagePos` créent un override sans
+rendre une race de base supprimable. Activités du jour : `ActivityContext`
+(reco du jour, météo réelle, historique).
 
 Les états d'interaction **éphémères** (étapes de questionnaire, stage de scan,
 onglet météo, sélection de race…) vivent en `useState` local dans chaque écran.
+Beaucoup d'écrans persistent en plus leur **historique / cache** local (voir §6).
 
 ## 4. Intégration OpenRouter (`src/lib/openrouter.js`)
 
@@ -85,9 +100,20 @@ onglet météo, sélection de race…) vivent en `useState` local dans chaque é
 Sans clé : la démo statique s'affiche + une invite « connectez une clé ». Avec
 clé+modèle : la réponse du modèle est rendue dans une carte « Analyse IA ».
 
-> Limitation actuelle : les écrans photo/vidéo envoient l'instruction **en texte**
-> (placeholders, pas de vraie image uploadée). Le support vision est déjà câblé
-> dans `openrouter.js`/`prompts.js` pour brancher de vraies images plus tard.
+Les hooks `useAnalysis`/`useAIText` passent désormais par `runAnalysis`
+(AppContext) : `aiReady` y est compris comme `OpenRouter || vision`. Les zones
+d'upload (`UploadBox`) sont de **vrais sélecteurs de fichier** ; l'image n'est
+exploitée que si un **modèle vision** est configuré (sinon repli texte).
+
+### Analyse d'images (fournisseurs vision)
+
+- `src/lib/visionProviders.js` — `VISION_PROVIDERS`, `validateVisionKey`,
+  `fetchVisionModels`, `visionComplete({ images, … })`. Adaptateurs OpenAI /
+  Anthropic (base64 + `anthropic-dangerous-direct-browser-access`) / Google
+  (`generateContent` + `inline_data`). **Multi-images** supporté.
+- `src/lib/videoFrames.js` — `pickVideoFile`, `extractFrames(file, n)` :
+  échantillonne `n` frames via `<video>` + canvas (les API chat n'ingèrent pas de
+  flux vidéo). Utilisé par le Traducteur canin.
 
 ## 6. Données (`src/data/`)
 
@@ -102,6 +128,27 @@ clé+modèle : la réponse du modèle est rendue dans une carte « Analyse IA »
 - `tools.js` — grille Fonctions (7 sections, tuiles pastel), accès rapide accueil,
   alertes, liens du profil.
 - `models.js` — `FREE_MODELS` (repli).
+- `whyQuestions.js` — `WHY_CATEGORIES` (12 catégories, ~70 questions) + `WHY_STATIC`
+  (réponses instantanées pour les cas courants) de l'écran « Pourquoi mon chien ? ».
+
+> `BEHAVIOR` (datasets) compte désormais **16 cas** détaillés. `PSYQ`/`PSYRESULT`,
+> `COMPARE`, `COMPAT`, `SIM`, `NF.why`/`NF.bodylang`/`NF.genetics` ne sont plus
+> utilisés : leurs écrans sont devenus dynamiques (voir §8b).
+
+### 6b. Logique métier & caches (`src/lib/`)
+
+- **Estimations locales (sans IA)** : `morpho.js` (races probables), `lifestyle.js`
+  (mode de vie + compatibilité adoption), `dogcompat.js` (entente entre deux
+  chiens), `simulator.js` (simulateur d'adoption), `psyProfile.js` (profil
+  psychologique scoré), `bodylang.js` (grille d'observation), `breedFilters.js`
+  (parsing taille/poids/vie + traits, filtres catalogue).
+- **Race & images** : `breeds.js` (normalisation/import/IA/The Dog API),
+  `breedImage.js` (Wikimédia, Google Images, fichier, URL), `weather.js`
+  (géoloc + Open-Meteo).
+- **Caches localStorage** (génération IA réutilisable, une clé par sujet) :
+  `behaviorCache`, `activityDetail`, `breedInfoCache`, `healthInfoCache`,
+  `screeningInfoCache`, `breedScreeningsCache`, `morphoHistory`. Historiques :
+  activités (`canidor_activity_history`), morpho (`canidor_morpho_history`).
 
 ## 7. Design tokens (`src/theme.js`)
 
@@ -114,13 +161,24 @@ placeholders rayés. **Ne pas introduire de couleurs hors charte.**
 Regroupés par section dans des fichiers multi-composants, exposés via le registre
 `screens/index.js` (`getScreen(id)`), résolu par `App.jsx` :
 
-- `Home.jsx`, `Tools.jsx`, `Profile.jsx`, `Carnet.jsx`, `Settings.jsx`
+- `Home.jsx`, `Tools.jsx`, `Profile.jsx` (photo + cadrage), `Carnet.jsx`, `Settings.jsx` (OpenRouter + vision)
 - `identity.jsx` — Identify, Morpho, Compare, Fiche, Catalogue, Worldmap, Genetics
 - `behavior.jsx` — Behavior, Psy, Translate, Bodylang, Whydog, Barkprevent, Barkrecog
 - `health.jsx` — HealthPhoto, Weight, Agehuman, Pain, Predictive, Vetprep, Nutrition, Recipes
 - `activity.jsx` — Coach, Activities, Weatherprog, Walkroute, Mentalex, Activitylevel
 - `adoption.jsx` — Lifestyle, Compat, Dogcompat, Simulator
 - `advanced.jsx` — Timeline, Twin, Pedigree
+
+### 8b. Écrans devenus dynamiques (v0.2.0)
+
+La plupart des écrans « vitrine » du prototype sont désormais **interactifs** :
+Catalogue/Fiche (recherche, auto-complétion, filtres, ajout/IA/import, photo +
+recadrage, infos IA, pathologies cliquables), Morpho (+ historique), Comparateur
+(2 races), Worldmap (races cliquables → Fiche), Genetics (tout le catalogue +
+dépistages IA), Activities (météo réelle + historique), Lifestyle, Compat,
+Dogcompat (2 chiens), Simulator, Behavior (16 cas), Psy (questionnaire scoré),
+Translate (photo/vidéo → vision), Bodylang (grille guidée), Whydog (catalogue
+catégorisé), Carnet (éditable).
 
 ## 9. Icônes & PWA
 
@@ -131,7 +189,10 @@ Regroupés par section dans des fichiers multi-composants, exposés via le regis
 
 ## 10. Pistes d'évolution
 
-- Upload réel de photos/vidéos et envoi multimodal aux écrans Capture IA.
-- Export PDF/partage du rapport pré-consultation véto.
-- Sélecteur de race réel dans Simulateur / Comparateur (actuellement statiques).
-- Synchronisation cloud optionnelle du profil (aujourd'hui 100 % local).
+- **Vidéo native** via l'API Files de Gemini (au lieu de l'échantillonnage de
+  frames) pour une vraie lecture du mouvement.
+- Export PDF / partage du rapport pré-consultation véto et des profils.
+- Câbler les derniers écrans encore statiques (Twin, Pedigree, Timeline,
+  Predictive, certains écrans nutrition).
+- Synchronisation cloud optionnelle du profil et des historiques (aujourd'hui
+  100 % local).

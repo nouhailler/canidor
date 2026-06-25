@@ -85,8 +85,26 @@ Une fois clé + modèle configurés, les écrans **Capture IA / Rapport / Explai
 appellent `POST /api/v1/chat/completions` et affichent la réponse. Sans clé, ils
 conservent la démo et invitent à « connecter une clé dans Paramètres ».
 
-> 🔒 **Confidentialité** — votre clé reste **sur l'appareil** et n'est jamais
-> transmise ailleurs que dans l'en-tête `Authorization` des appels directs à OpenRouter.
+> 💡 **Beaucoup d'écrans fonctionnent sans IA** : estimations locales (mode de
+> vie, compatibilités, simulateur, profil psychologique, morphologie…), cas de
+> comportement détaillés, catalogue de questions… L'IA **enrichit** mais n'est
+> pas requise.
+
+### 👁️ Analyse d'images & vidéo (OpenAI / Anthropic / Google)
+
+Les modèles gratuits d'OpenRouter ne savent pas analyser d'images. Une **seconde
+section** dans Paramètres permet d'ajouter une clé **OpenAI**, **Anthropic** ou
+**Google** et de choisir un **modèle multimodal** (liste récupérée en direct).
+
+- Les écrans **photo** (identification, santé, douleur, langage corporel)
+  envoient alors la **vraie image** au modèle vision choisi.
+- Le **Traducteur canin** accepte une photo **ou une courte vidéo** : l'app en
+  **extrait quelques images** côté navigateur et les analyse (les API de chat
+  n'ingèrent pas de flux vidéo).
+
+> 🔒 **Confidentialité** — vos clés (OpenRouter et vision) restent **sur
+> l'appareil** et ne transitent que dans l'en-tête d'autorisation des appels
+> directs au fournisseur. La géolocalisation ne sert qu'à la météo des activités.
 >
 > ⚠️ **Avertissement** — toutes les analyses IA sont **indicatives** et ne
 > remplacent jamais l'avis d'un vétérinaire ou d'un éducateur professionnel.
@@ -124,13 +142,19 @@ automatiquement.
 src/
 ├─ theme.js              # design tokens (couleurs, polices, placeholders rayés)
 ├─ store/
-│  ├─ AppContext.jsx     # profil éditable de Stanley + réglages OpenRouter
-│  └─ ChromeContext.jsx  # surcharge titre/retour (écrans liste/détail)
-├─ data/                 # jeux de données centralisés (races, santé, modèles, aide…)
+│  ├─ AppContext.jsx     # profil chien + OpenRouter + fournisseur vision + runAnalysis
+│  ├─ BreedsContext.jsx  # catalogue de races (base + ajouts/overrides persistés)
+│  ├─ ActivityContext.jsx# activités du jour, météo réelle, historique
+│  └─ ChromeContext.jsx  # surcharge titre/retour + goScreen (liste/détail)
+├─ data/                 # jeux de données (races, santé, questions, modèles, aide…)
 ├─ lib/
-│  ├─ openrouter.js      # validation clé, modèles gratuits, chat completions
-│  └─ prompts.js         # prompts par écran
-├─ hooks/useAnalysis.js  # machine d'états Capture IA + génération texte
+│  ├─ openrouter.js      # OpenRouter : validation clé, modèles, chat completions
+│  ├─ visionProviders.js # OpenAI/Anthropic/Google : modèles + analyse multi-images
+│  ├─ videoFrames.js     # extraction de frames d'une vidéo (canvas)
+│  ├─ prompts.js         # prompts par écran
+│  └─ …                  # estimations locales (lifestyle, dogcompat, simulator,
+│                        #   psyProfile, bodylang, morpho, breedFilters…) + caches
+├─ hooks/useAnalysis.js  # machine Capture IA + génération texte (via runAnalysis)
 ├─ components/           # StatusBar, AppBar, TabBar, Onboarding, HelpSheet, UI, CaptureScreen
 └─ screens/              # ~35 écrans groupés par section + registre (index.js)
 ```
