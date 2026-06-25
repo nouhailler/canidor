@@ -4,10 +4,10 @@ import { Screen, Intro, SectionLabel, PrimaryButton, OutlineButton, TipNote, Bar
 import { AIPanel } from '../components/ai'
 import { useApp } from '../store/AppContext'
 import { useBreeds } from '../store/BreedsContext'
-import { SIM } from '../data/datasets'
 import { INSTRUCTIONS } from '../lib/prompts'
 import { LIFESTYLE_FIELDS, LIFESTYLE_DEFAULTS, estimateCompat, summarize, ADOPTION_FIELDS, ADOPTION_DEFAULTS, estimateAdoption } from '../lib/lifestyle'
 import { TEMPERAMENTS, estimateDogCompat } from '../lib/dogcompat'
+import { estimateSimulation } from '../lib/simulator'
 
 /* ---------------- Mode de vie (Rapport dynamique) ---------------- */
 const lifestyleSelectStyle = { width: '100%', border: `1px solid ${C.cardBorder}`, background: '#FAF4EA', borderRadius: 10, padding: '11px 12px', fontSize: 15, fontWeight: 600, color: C.espresso, outline: 'none', marginTop: 4 }
@@ -225,18 +225,36 @@ export function Dogcompat() {
   )
 }
 
-/* ---------------- Simulateur d'adoption (Calcul/Info) ---------------- */
+/* ---------------- Simulateur d'adoption (dynamique) ---------------- */
+const simSelectStyle = { border: 'none', background: 'transparent', fontSize: 16, fontWeight: 600, color: C.espresso, outline: 'none', cursor: 'pointer', textAlignLast: 'right', maxWidth: 200 }
+
 export function Simulator() {
-  const s = SIM
+  const { dog } = useApp()
+  const { breeds } = useBreeds()
+  const usable = breeds.filter((b) => Array.isArray(b.traits) && b.traits.length)
+  const initial = Math.max(0, usable.findIndex((b) => b.nom === dog.race))
+  const [sel, setSel] = useState(initial)
+
+  if (!usable.length) {
+    return (
+      <Screen>
+        <Intro>Visualisez ce que représente vraiment la vie avec une race, avant d'adopter.</Intro>
+        <div style={{ marginTop: 20, fontSize: 13.5, color: C.label, lineHeight: 1.5 }}>Aucune race chiffrée dans le catalogue. Ajoutez-en pour lancer une simulation.</div>
+      </Screen>
+    )
+  }
+
+  const breed = usable[Math.min(sel, usable.length - 1)]
+  const s = estimateSimulation(breed)
+
   return (
     <Screen>
       <Intro>Visualisez ce que représente vraiment la vie avec une race, avant d'adopter.</Intro>
-      <div style={{ marginTop: 16, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: C.label, fontWeight: 600 }}>Race simulée</div>
-          <div style={{ fontSize: 16, fontWeight: 600, marginTop: 3 }}>{s.breed}</div>
-        </div>
-        <div style={{ color: C.grayA, fontSize: 18 }}>⌄</div>
+      <div style={{ marginTop: 16, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: C.label, fontWeight: 600, flex: 'none' }}>Race simulée</div>
+        <select style={simSelectStyle} value={Math.min(sel, usable.length - 1)} onChange={(e) => setSel(Number(e.target.value))}>
+          {usable.map((b, i) => <option key={b.id} value={i}>{b.nom}</option>)}
+        </select>
       </div>
       <div style={{ marginTop: 12, display: 'flex', gap: 10 }}>
         <div style={{ flex: 1, background: C.espresso, color: C.cream, borderRadius: 16, padding: 16 }}>
