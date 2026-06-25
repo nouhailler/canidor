@@ -3,7 +3,7 @@ import { C, serif, mono } from '../theme'
 import { Screen, Intro, SectionLabel, PrimaryButton, OutlineButton, Chip, BulletLine, UploadBox, Bar, ScanBox } from '../components/ui'
 import CaptureScreen from '../components/CaptureScreen'
 import { AIPanel, ConnectKeyNote, AIResultCard } from '../components/ai'
-import { useAnalysis } from '../hooks/useAnalysis'
+import { useAnalysis, useAIText } from '../hooks/useAnalysis'
 import { useApp } from '../store/AppContext'
 import { useChrome } from '../store/ChromeContext'
 import { chatCompletion } from '../lib/openrouter'
@@ -13,6 +13,7 @@ import { INSTRUCTIONS } from '../lib/prompts'
 import { loadCase, saveCase, parseCase } from '../lib/behaviorCache'
 import { PSY_QUESTIONS, computeProfile, dimQualifier, profileSummary } from '../lib/psyProfile'
 import { pickVideoFile, extractFrames } from '../lib/videoFrames'
+import { BODYLANG_FIELDS, BODYLANG_DEFAULTS, buildDescription } from '../lib/bodylang'
 
 const EXTRA_CASES = ['Léchage compulsif', 'Vol de nourriture', 'Réveils nocturnes', 'Pica (ingestion d’objets)']
 
@@ -363,42 +364,57 @@ function TipNoteLine({ children }) {
 }
 
 /* ---------------- Langage corporel (Capture IA) ---------------- */
+const bodylangSelect = { width: '100%', border: `1px solid ${C.cardBorder}`, background: '#FAF4EA', borderRadius: 10, padding: '10px 11px', fontSize: 14, fontWeight: 500, color: C.espresso, outline: 'none', marginTop: 4 }
+
 export function Bodylang() {
-  const bl = NF.bodylang
+  const { visionReady } = useApp()
+  const { aiReady, loading, text, error, run } = useAIText()
+  const [fields, setFields] = useState(BODYLANG_DEFAULTS)
+  const [extra, setExtra] = useState('')
+  const [photo, setPhoto] = useState(null)
+  const set = (k) => (e) => setFields((s) => ({ ...s, [k]: e.target.value }))
+
+  const analyze = () => run(INSTRUCTIONS.bodylang(buildDescription(fields, extra)), visionReady ? photo : undefined)
+
   return (
-    <CaptureScreen
-      analyzingLabel="Lecture des signaux…"
-      scanDur="1.5s"
-      scanHeight={240}
-      buildInstruction={() => INSTRUCTIONS.bodylang('')}
-      idle={({ start, image, pickImage }) => (
-        <>
-          <Intro>Importez une photo, ou décrivez la scène. L'IA décode oreilles, queue, regard et posture.</Intro>
-          <div style={{ marginTop: 16 }}><UploadBox icon="📷" caption="photo du chien" height={200} image={image} onPick={pickImage} /></div>
-          <div style={{ marginTop: 16 }}><PrimaryButton onClick={start}>Décoder le langage</PrimaryButton></div>
-          <div style={{ marginTop: 16, fontSize: 12, color: C.label }}>Émotions détectables : {bl.detect.map((d) => <span key={d} style={{ color: C.body, fontWeight: 600 }}>{d} · </span>)}</div>
-        </>
-      )}
-      result={({ reset }) => (
-        <>
-          <div style={{ background: C.espresso, color: C.cream, borderRadius: 22, padding: 22, textAlign: 'center' }}>
-            <div style={{ fontSize: 36 }}>{bl.emoji}</div>
-            <div style={{ fontFamily: serif, fontSize: 28, marginTop: 6 }}>{bl.emotion}</div>
-            <div style={{ fontSize: 12, color: C.label, marginTop: 6 }}>Confiance {bl.conf}</div>
+    <Screen>
+      <Intro>Renseignez ce que vous observez — chaque signal compte. L'IA en déduit l'émotion probable et les signaux clés. La photo est un bonus (utilisée seulement si un modèle d'analyse d'images est configuré).</Intro>
+
+      <SectionLabel style={{ marginTop: 16, marginBottom: 10 }}>Grille d'observation</SectionLabel>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        {BODYLANG_FIELDS.map((f) => (
+          <label key={f.k} style={{ display: 'block', background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 12, padding: '10px 12px' }}>
+            <div style={{ fontSize: 10, letterSpacing: '.04em', textTransform: 'uppercase', color: C.label, fontWeight: 600 }}>{f.k}</div>
+            <select style={bodylangSelect} value={fields[f.k]} onChange={set(f.k)}>
+              {f.options.map((o) => <option key={o}>{o}</option>)}
+            </select>
+          </label>
+        ))}
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        <div style={{ fontSize: 10, letterSpacing: '.04em', textTransform: 'uppercase', color: C.label, fontWeight: 600, marginBottom: 4 }}>Autres détails (facultatif)</div>
+        <textarea value={extra} onChange={(e) => setExtra(e.target.value)} rows={2} placeholder="Ex. : ça vient de commencer, il halète alors qu'il n'a pas couru…"
+          style={{ width: '100%', border: `1px solid ${C.cardBorder}`, background: '#FAF4EA', borderRadius: 10, padding: '10px 12px', fontSize: 14, color: C.espresso, outline: 'none', resize: 'vertical', fontFamily: 'inherit' }} />
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        <UploadBox icon="📷" caption="photo du chien (bonus)" height={170} image={photo} onPick={setPhoto} />
+        {photo && !visionReady && <div style={{ marginTop: 8, fontSize: 11.5, color: C.label, lineHeight: 1.45 }}>Photo non analysée : configurez un modèle d'analyse d'images dans Paramètres pour l'exploiter.</div>}
+      </div>
+
+      <div style={{ marginTop: 16 }}>
+        {!aiReady ? <ConnectKeyNote /> : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {(text || error) && <AIResultCard text={text} error={error} />}
+            <button className="reset" disabled={loading} onClick={analyze}
+              style={{ width: '100%', border: `1px solid ${C.grayB}`, borderRadius: 999, padding: 14, textAlign: 'center', fontWeight: 600, fontSize: 15, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.6 : 1, minHeight: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              {loading ? (<><span style={{ width: 16, height: 16, border: '2px solid #C9B89B', borderTopColor: C.espresso, borderRadius: '50%', display: 'inline-block', animation: 'spin .8s linear infinite' }} />Analyse en cours…</>) : text || error ? '↻ Réanalyser' : '🐕 Décoder le langage corporel'}
+            </button>
           </div>
-          <SectionLabel style={{ marginTop: 18, marginBottom: 12 }}>Lecture détaillée</SectionLabel>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {bl.parts.map((p) => (
-              <div key={p[0]} style={{ background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: 14 }}>
-                <div style={{ fontSize: 13, fontWeight: 700 }}>{p[0]}</div>
-                <div style={{ fontSize: 13, color: C.sub, marginTop: 3, lineHeight: 1.45 }}>{p[1]}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ marginTop: 16 }}><OutlineButton onClick={reset}>Nouvelle analyse</OutlineButton></div>
-        </>
-      )}
-    />
+        )}
+      </div>
+    </Screen>
   )
 }
 
