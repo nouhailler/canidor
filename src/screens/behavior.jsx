@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
 import { C, serif, mono } from '../theme'
-import { Screen, Intro, SectionLabel, PrimaryButton, OutlineButton, Chip, BulletLine, UploadBox } from '../components/ui'
+import { Screen, Intro, SectionLabel, PrimaryButton, OutlineButton, Chip, BulletLine, UploadBox, Bar } from '../components/ui'
 import CaptureScreen from '../components/CaptureScreen'
 import { AIPanel, ConnectKeyNote, AIResultCard } from '../components/ai'
 import { useAnalysis } from '../hooks/useAnalysis'
 import { useApp } from '../store/AppContext'
 import { chatCompletion } from '../lib/openrouter'
 import { buildMessages } from '../lib/prompts'
-import { BEHAVIOR, PSYQ, PSYRESULT, NF, TRANSLATE_SIGNALS } from '../data/datasets'
+import { BEHAVIOR, NF, TRANSLATE_SIGNALS } from '../data/datasets'
 import { INSTRUCTIONS } from '../lib/prompts'
 import { loadCase, saveCase, parseCase } from '../lib/behaviorCache'
+import { PSY_QUESTIONS, computeProfile, dimQualifier, profileSummary } from '../lib/psyProfile'
 
 const EXTRA_CASES = ['Léchage compulsif', 'Vol de nourriture', 'Réveils nocturnes', 'Pica (ingestion d’objets)']
 
@@ -148,52 +149,95 @@ export function InputBar({ placeholder }) {
 /* ---------------- Profil psychologique (Questionnaire) ---------------- */
 export function Psy() {
   const [step, setStep] = useState(0)
+  const [answers, setAnswers] = useState([]) // index d'option par question
   const [done, setDone] = useState(false)
 
+  const restart = () => { setStep(0); setAnswers([]); setDone(false) }
+
   if (done) {
+    const profile = computeProfile(answers)
     return (
       <Screen>
         <div style={{ textAlign: 'center', paddingTop: 8 }}>
           <div style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: C.label, fontWeight: 600 }}>Profil dominant</div>
-          <div style={{ fontFamily: serif, fontSize: 34, lineHeight: 1.1, marginTop: 10 }}>{PSYRESULT.archetype}</div>
-          <div style={{ fontSize: 14, lineHeight: 1.55, color: C.body, marginTop: 12 }}>{PSYRESULT.blurb}</div>
+          <div style={{ fontFamily: serif, fontSize: 32, lineHeight: 1.1, marginTop: 10 }}>{profile.archetype}</div>
+          <div style={{ fontSize: 14, lineHeight: 1.55, color: C.body, marginTop: 12 }}>{profile.blurb}</div>
         </div>
-        <div style={{ marginTop: 22, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          {PSYRESULT.dims.map((d) => (
-            <div key={d[0]} style={{ background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: 14 }}>
-              <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: C.label, fontWeight: 600 }}>{d[0]}</div>
-              <div style={{ fontSize: 15, fontWeight: 600, marginTop: 4 }}>{d[1]}</div>
+
+        <SectionLabel style={{ marginTop: 24, marginBottom: 14 }}>Profil de personnalité</SectionLabel>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {profile.dims.map((d) => (
+            <div key={d.key}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
+                <span style={{ fontWeight: 600 }}>{d.label}</span>
+                <span style={{ color: C.label }}>{dimQualifier(d.key, d.pct)} · {d.pct}%</span>
+              </div>
+              <Bar value={d.pct} height={8} />
             </div>
           ))}
         </div>
-        <SectionLabel style={{ marginTop: 22, marginBottom: 12 }}>Recommandations</SectionLabel>
+
+        {!!profile.strengths.length && (<>
+          <SectionLabel style={{ marginTop: 24, marginBottom: 12 }}>Points forts</SectionLabel>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {profile.strengths.map((s) => (
+              <div key={s} style={{ display: 'flex', gap: 12, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: 14, fontSize: 13.5, lineHeight: 1.45 }}>
+                <span style={{ color: C.successDk, flex: 'none' }}>✓</span>{s}
+              </div>
+            ))}
+          </div>
+        </>)}
+
+        {!!profile.watch.length && (<>
+          <SectionLabel style={{ marginTop: 24, marginBottom: 12 }}>Points de vigilance</SectionLabel>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {profile.watch.map((w) => (
+              <div key={w} style={{ display: 'flex', gap: 12, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: 14, fontSize: 13.5, lineHeight: 1.45 }}>
+                <span style={{ color: C.warn, flex: 'none' }}>!</span>{w}
+              </div>
+            ))}
+          </div>
+        </>)}
+
+        <SectionLabel style={{ marginTop: 24, marginBottom: 12 }}>Recommandations</SectionLabel>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {PSYRESULT.recos.map((r) => (
+          {profile.recos.map((r) => (
             <div key={r} style={{ display: 'flex', gap: 12, background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 14, padding: 14, fontSize: 13.5, lineHeight: 1.45 }}>
-              <span style={{ color: C.successDk, flex: 'none' }}>✓</span>{r}
+              <span style={{ color: C.espresso, flex: 'none' }}>›</span>{r}
             </div>
           ))}
         </div>
-        <div style={{ marginTop: 18 }}><OutlineButton onClick={() => { setStep(0); setDone(false) }}>Refaire le test</OutlineButton></div>
+
+        <div style={{ marginTop: 18 }}>
+          <AIPanel buildInstruction={() => INSTRUCTIONS.psy(profileSummary(profile))} label="Analyse approfondie avec l'IA" />
+        </div>
+        <div style={{ marginTop: 14 }}><OutlineButton onClick={restart}>Refaire le test</OutlineButton></div>
       </Screen>
     )
   }
 
-  const q = PSYQ[step]
-  const prog = Math.round((step / PSYQ.length) * 100)
-  const answer = () => (step >= PSYQ.length - 1 ? setDone(true) : setStep(step + 1))
+  const q = PSY_QUESTIONS[step]
+  const prog = Math.round((step / PSY_QUESTIONS.length) * 100)
+  const choose = (optIdx) => {
+    const next = [...answers]
+    next[step] = optIdx
+    setAnswers(next)
+    if (step >= PSY_QUESTIONS.length - 1) setDone(true)
+    else setStep(step + 1)
+  }
   return (
     <Screen>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-        <div style={{ fontSize: 12, color: C.label, fontWeight: 600 }}>{`Question ${step + 1} / ${PSYQ.length}`}</div>
+        <div style={{ fontSize: 12, color: C.label, fontWeight: 600 }}>{`Question ${step + 1} / ${PSY_QUESTIONS.length}`}</div>
+        {step > 0 && <button className="reset" onClick={() => setStep(step - 1)} style={{ fontSize: 12.5, color: C.sub, cursor: 'pointer' }}>‹ Précédent</button>}
       </div>
       <div style={{ height: 5, background: C.track, borderRadius: 3, overflow: 'hidden', marginTop: 10 }}>
         <div style={{ height: '100%', background: C.espresso, borderRadius: 3, transition: 'width .3s', width: `${prog}%` }} />
       </div>
-      <div style={{ fontFamily: serif, fontSize: 27, lineHeight: 1.2, marginTop: 30 }}>{q.q}</div>
-      <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {q.opts.map((o) => (
-          <button key={o} className="reset hoverable" onClick={answer} style={{ textAlign: 'left', background: '#fff', border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 16, padding: 18, fontSize: 15, fontWeight: 500, cursor: 'pointer' }}>{o}</button>
+      <div style={{ fontFamily: serif, fontSize: 26, lineHeight: 1.25, marginTop: 28 }}>{q.q}</div>
+      <div style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {q.opts.map((o, idx) => (
+          <button key={o.label} className="reset hoverable" onClick={() => choose(idx)} style={{ textAlign: 'left', background: answers[step] === idx ? C.tile : '#fff', border: `1px solid ${answers[step] === idx ? C.accent : C.cardBorder}`, boxShadow: C.cardShadow, borderRadius: 16, padding: 18, fontSize: 15, fontWeight: 500, cursor: 'pointer' }}>{o.label}</button>
         ))}
       </div>
     </Screen>
